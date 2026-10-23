@@ -11,7 +11,7 @@ create_paper(dir)                         # just the LaTeX paper, in any project
 ## install
 
 ```r
-remotes::install_github("SimonLabarthe/creating_project")
+remotes::install_github("SimonLabarthe/create.project")
 ```
 
 ## once per computer

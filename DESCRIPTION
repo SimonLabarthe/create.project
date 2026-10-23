@@ -8,7 +8,7 @@ Description: Bootstraps a project in one call. 'research' projects get a
     package layout. Both get git, a license, a README and a LaTeX paper
     skeleton built on good practices.
 License: MIT + file LICENSE
-URL: https://github.com/SimonLabarthe/creating_project
+URL: https://github.com/SimonLabarthe/create.project
 Imports:
     fs,
     gert,

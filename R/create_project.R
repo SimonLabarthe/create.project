@@ -37,14 +37,16 @@ create_project <- function(path,
   }
 
   name     <- basename(fs::path_abs(path))
-  repo_url <- sprintf("https://github.com/%s/%s", github_user, name)
+  pkg      <- gsub("[^A-Za-z0-9.]", ".", name)   # valid R package name
+  # use_github() names the repo after the package, not the folder
+  repo_url <- sprintf("https://github.com/%s/%s", github_user, pkg)
 
   # 1. skeleton: DESCRIPTION, NAMESPACE, R/
   if (!file.exists(file.path(path, "DESCRIPTION"))) {
     usethis::create_package(
       path,
       fields = list(
-        Package     = gsub("[^A-Za-z0-9.]", ".", name),   # valid R package name
+        Package     = pkg,
         `Authors@R` = utils::as.person(sprintf("%s <%s> [aut, cre]", author, email)),
         URL         = repo_url
       ),
@@ -73,7 +75,7 @@ create_project <- function(path,
     create_paper("paper", title, author, email,
                  figures_dir = "figures/", repo_url = repo_url)
   }
-  write_readme(type, name, github_user)
+  write_readme(type, name, repo_url)
 
   # 3. renv: last before git, so its files are in the first commit.
   # load = FALSE, otherwise R switches to the new, empty library mid-run
@@ -152,7 +154,7 @@ package_layout <- function() {
   usethis::use_git_ignore("paper/*.pdf")
 }
 
-write_readme <- function(type, name, github_user) {
+write_readme <- function(type, name, repo_url) {
   body <- if (type == "research") {
     c("## reproduce", "",
       "1. `renv::restore()`",
@@ -161,7 +163,7 @@ write_readme <- function(type, name, github_user) {
   } else {
     c("## install", "",
       "```r",
-      sprintf("remotes::install_github(\"%s/%s\")", github_user, name),
+      sprintf("remotes::install_github(\"%s\")", sub("^https://github.com/", "", repo_url)),
       "```")
   }
   write_if_missing("README.md", c(paste("#", name), "", "[One line: what this is.]", "", body))

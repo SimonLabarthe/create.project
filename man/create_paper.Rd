@@ -65,6 +65,6 @@ need, comparison with existing tools, design, usage, validation).
 \examples{
 \dontrun{
 create_paper("5_docs", title = "Why does X affect Y?")
-create_paper("paper", type = "software", package = "coolfun")
+create_paper("paper", type = "software", package = "package")
 }
 }

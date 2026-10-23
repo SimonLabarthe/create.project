@@ -48,6 +48,8 @@ create_paper("paper",  type = "software", package = "coolfun") # need, existing 
 the templates are plain LaTeX in `inst/templates/paper/`: `preamble.tex` (packages, title, shared by both) + one body per type.
 `{{name}}` is filled by `create_paper()`, `[...]` is writing guidance. after editing, reinstall (`devtools::install()`).
 
+no blank boxes: the templates ship with example figures and tables made from `dplyr::starwars` (and a lightsaber duel drawn in R). `create_paper()` copies the figures (`example_*.pdf`) into the figures folder; replace them with yours.
+
 ## this repo
 
 | file | role |
@@ -57,7 +59,9 @@ the templates are plain LaTeX in `inst/templates/paper/`: `preamble.tex` (packag
 | `inst/templates/paper/preamble.tex` | LaTeX packages and title block, shared by both paper types |
 | `inst/templates/paper/research.tex` | body of a research paper |
 | `inst/templates/paper/software.tex` | body of a software paper |
-| `paper/` | the paper introducing this package (build-ignored) |
+| `inst/templates/paper/figures/` | example figures copied into new papers |
+| `data-raw/example_figures.R` | makes those figures and the example table numbers (build-ignored) |
+| `paper/` | the paper introducing this package; `make_figures.R` makes its figures (build-ignored) |
 | `inst/templates/project.Rproj` | RStudio settings copied into new projects |
 | `tests/testthat/` | tests, run with `devtools::test()` |
 | `DESCRIPTION`, `LICENSE` | package metadata |

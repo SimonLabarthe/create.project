@@ -67,13 +67,14 @@
     \centering
     \footnotesize
     \begin{tikzpicture}[box/.style={draw, rounded corners, align=center, minimum width=3.5cm, minimum height=1.2cm}]
-        \node[box] (X)  at (0,0)  {D: [Treatment]};
-        \node[box] (M1) at (5,3)  {$M_1$: [Mechanism 1]};
-        \node[box] (M2) at (5,1)  {$M_2$: [Mechanism 2]};
-        \node[box] (M3) at (5,-1) {$M_3$: [Mechanism 3]};
-        \node[box] (M4) at (5,-3) {$M_4$: [Mechanism 4]};
-        \node[box] (U)  at (5,5.5) {U: [Pre-treatment\\characteristics]};
-        \node[box] (Y)  at (10,0) {Y: [Outcome]};
+        % example (Yoda's theory): replace with your treatment, mechanisms, outcome
+        \node[box] (X)  at (0,0)  {D: Fear};
+        \node[box] (M1) at (5,3)  {$M_1$: Anger};
+        \node[box] (M2) at (5,1)  {$M_2$: Hate};
+        \node[box] (M3) at (5,-1) {$M_3$: Isolation};
+        \node[box] (M4) at (5,-3) {$M_4$: Jedi training};
+        \node[box] (U)  at (5,5.5) {U: Midi-chlorian\\count};
+        \node[box] (Y)  at (10,0) {Y: Suffering};
 
         \foreach \m in {M1, M2, M3, M4} \draw[-{Stealth}, thick] (X) -- node[above, sloped] {$+$} (\m);
         \foreach \m in {M1, M2, M3}     \draw[-{Stealth}, thick] (\m) -- node[above, sloped] {$+$} (Y);
@@ -82,7 +83,7 @@
         \draw[-{Stealth}, dashed] (U) -- (X);
         \draw[-{Stealth}, dashed] (U) -- (Y);
     \end{tikzpicture}
-    \caption{[DAG: causal pathways from X to Y]}
+    \caption{[DAG: causal pathways from X to Y] Example: fear leads to the dark side}
     \label{fig:dag}
 \end{figure}
 
@@ -124,20 +125,20 @@
 \subsection{Descriptive Statistics} % 12% of design
 [Reference the table explicitly (\cref{tab:descr}). Note any unusual distributions or missingness.]
 
-% tip: once the R scripts write the table, replace the tabular below with
-% \input{../4_outputs/tables/descriptives.tex}
+% example numbers: dplyr::starwars. once your R scripts write the table,
+% replace the tabular below with \input{../4_outputs/tables/descriptives.tex}
 \begin{table}[htbp]
     \centering
     \footnotesize
-    \caption{Descriptive statistics}
+    \caption{Descriptive statistics (example: Star Wars characters)}
     \label{tab:descr}
     \begin{tabular}{l*{5}{c}}
         \toprule
-        Variable & N & Mean & SD & Min & Max \\
+        Variable         & N  & Mean  & SD    & Min & Max \\
         \midrule
-        {[Variable 1]} & [N] & [Mean] & [SD] & [Min] & [Max] \\
-        {[Variable 2]} & [N] & [Mean] & [SD] & [Min] & [Max] \\
-        {[Variable 3]} & [N] & [Mean] & [SD] & [Min] & [Max] \\
+        Height (cm)      & 58 & 174.3 & 35.8  & 66  & 234 \\
+        Mass (kg)        & 58 & 75.6  & 29.3  & 15  & 159 \\
+        Birth year (BBY) & 35 & 76.6  & 147.0 & 8   & 896 \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -159,24 +160,26 @@
 \begin{table}[htbp]
     \centering
     \begin{threeparttable}
-        \caption{Main results}
+        \caption{Main results (example)}
         \label{tab:results}
         \begin{tabular}{l*{3}{c}}
             \toprule
-             & (1) & (2) & (3) \\
+                        & (1)           & (2)           & (3)           \\
             \midrule
-            {[IV]}       & [Coef] & [Coef] & [Coef] \\
-                         & ([SE]) & ([SE]) & ([SE]) \\
-            {[Controls]} & [Coef] & [Coef] & [Coef] \\
-                         & ([SE]) & ([SE]) & ([SE]) \\
+            Height (cm) & 0.61$^{***}$  & 0.61$^{***}$  & 0.61$^{***}$  \\
+                        & (0.07)        & (0.07)        & (0.07)        \\
+            Human       &               & 3.28          & 1.75          \\
+                        &               & (5.46)        & (5.14)        \\
+            Masculine   &               &               & 17.50$^{***}$ \\
+                        &               &               & (5.99)        \\
             \midrule
-            N            & [N]    & [N]    & [N]    \\
-            $R^2$        & [$R^2$] & [$R^2$] & [$R^2$] \\
+            N           & 58            & 58            & 58            \\
+            $R^2$       & 0.56          & 0.57          & 0.63          \\
             \bottomrule
         \end{tabular}
         \begin{tablenotes}[flushleft]
             \footnotesize
-            \item \textit{Note:} [Explain model specifications. Standard errors in parentheses, clustered by [unit]. $^{*}p<0.1$; $^{**}p<0.05$; $^{***}p<0.01$.]
+            \item \textit{Note:} OLS, dependent variable: mass (kg). Data: \texttt{dplyr::starwars}, Jabba the Hutt excluded. Standard errors in parentheses. $^{*}p<0.1$; $^{**}p<0.05$; $^{***}p<0.01$.
         \end{tablenotes}
     \end{threeparttable}
 \end{table}
@@ -185,8 +188,8 @@
 
 \begin{figure}[htbp]                 % floating box; [htbp] = here, top, bottom, own page
     \centering
-    \safegraphic[width=0.8\textwidth]{main_effect.pdf}  % 80% of the text width
-    \caption{[Visualization of main effects]}            % figure captions go below
+    \safegraphic[width=0.8\textwidth]{example_height_mass.pdf}  % 80% of the text width
+    \caption{[Visualization of main effects] Example: taller characters are heavier} % captions go below figures
     \label{fig:main}                                     % cite it with \cref{fig:main}
 \end{figure}
 
@@ -202,25 +205,25 @@
 \begin{figure}[htbp]
     \centering
     \begin{subfigure}{0.48\textwidth}   % 48% wide, so 2 fit per row
-        \safegraphic{placebo_a.pdf}
-        \caption{[First]}
+        \safegraphic{example_duel.pdf}
+        \caption{The duel}
     \end{subfigure}\hfill               % \hfill pushes the 2nd one to the right
     \begin{subfigure}{0.48\textwidth}
-        \safegraphic{placebo_b.pdf}
-        \caption{[Second]}
+        \safegraphic{example_species.pdf}
+        \caption{Species}
     \end{subfigure}
 
     \medskip                            % vertical space between rows
 
     \begin{subfigure}{0.48\textwidth}
-        \safegraphic{placebo_c.pdf}
-        \caption{[Third]}
+        \safegraphic{example_homeworld.pdf}
+        \caption{Homeworlds}
     \end{subfigure}\hfill
     \begin{subfigure}{0.48\textwidth}
-        \safegraphic{placebo_d.pdf}
-        \caption{[Fourth]}
+        \safegraphic{example_films.pdf}
+        \caption{Films per character}
     \end{subfigure}
-    \caption{[Placebo tests in a 2$\times$2 grid]}
+    \caption{[Placebo tests in a 2$\times$2 grid] Example: four figures, one caption each}
     \label{fig:grid}
 \end{figure}
 

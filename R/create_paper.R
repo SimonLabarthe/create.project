@@ -30,7 +30,7 @@
 #' @examples
 #' \dontrun{
 #' create_paper("5_docs", title = "Why does X affect Y?")
-#' create_paper("paper", type = "software", package = "coolfun")
+#' create_paper("paper", type = "software", package = "package")
 #' }
 create_paper <- function(dir         = "5_docs",
                          type        = c("research", "software"),
@@ -50,6 +50,14 @@ create_paper <- function(dir         = "5_docs",
   fs::dir_create(dir)
 
   if (!file.exists(tex_path)) {
+    # example figures (example_*.pdf, made by data-raw/example_figures.R),
+    # so the skeleton shows real figures: replace them with yours
+    fig_dir <- file.path(dir, figures_dir)
+    fs::dir_create(fig_dir)
+    examples <- list.files(system.file("templates", "paper", "figures", package = "create.project"),
+                           full.names = TRUE)
+    file.copy(examples, fig_dir, overwrite = FALSE)
+
     parts <- system.file("templates", "paper", c("preamble.tex", paste0(type, ".tex")),
                          package = "create.project", mustWork = TRUE)
     tex   <- paste(unlist(lapply(parts, readLines, encoding = "UTF-8")), collapse = "\n")

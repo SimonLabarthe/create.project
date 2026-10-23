@@ -1,6 +1,6 @@
 Package: create.project
 Title: Create Reproducible Research Projects, R Packages and Papers
-Version: 0.2.0
+Version: 0.3.0
 Authors@R: 
     person("Simon", "Labarthe", , "simon.labarthe@outlook.com", role = c("aut", "cre"))
 Description: Bootstraps a project in one call. 'research' projects get a

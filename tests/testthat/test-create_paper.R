@@ -27,3 +27,9 @@ test_that("software papers get their own body and the package name", {
   expect_match(tex, "remotes::install_github(\"me/coolfun\")", fixed = TRUE)
   expect_match(tex, "\\usepackage{listings}", fixed = TRUE)   # shared preamble
 })
+
+test_that("example figures land in the figures folder", {
+  dir <- withr::local_tempdir()
+  create_paper(file.path(dir, "5_docs"), figures_dir = "../4_outputs/figures/")
+  expect_true(file.exists(file.path(dir, "4_outputs", "figures", "example_duel.pdf")))
+})

@@ -39,16 +39,17 @@
 \begin{table}[htbp]
     \centering
     \small
-    \caption{[Comparison with existing tools]}
+    \caption{[Comparison with existing tools] Example: droids}
     \label{tab:comparison}
+    % example: replace the droids with the tools you compare against
     \begin{tabular}{l*{4}{c}}
         \toprule
-        Feature             & \texttt{{{package}}} & [Tool A] & [Tool B] & [Tool C] \\
+        Feature                    & \texttt{{{package}}} & R2-D2      & C-3PO      & BB-8       \\
         \midrule
-        {[Feature 1]}       & \checkmark & \checkmark &            &            \\
-        {[Feature 2]}       & \checkmark &            & \checkmark &            \\
-        {[Feature 3]}       & \checkmark &            &            & \checkmark \\
-        {[Dependencies]}    & [n]        & [n]        & [n]        & [n]        \\
+        Repairs a hyperdrive       & \checkmark           & \checkmark &            &            \\
+        Speaks 6 million languages & \checkmark           &            & \checkmark &            \\
+        Rolls on sand              & \checkmark           &            &            & \checkmark \\
+        Films in \texttt{starwars} & --                   & 7          & 6          & 1          \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -110,8 +111,8 @@ library({{package}})
 
 \begin{figure}[htbp]
     \centering
-    \safegraphic[width=0.8\textwidth]{output_example.pdf}
-    \caption{[Output of the realistic example]}
+    \safegraphic[width=0.8\textwidth]{example_duel.pdf}
+    \caption{[Output of the realistic example] Example: a figure drawn in R}
     \label{fig:output}
 \end{figure}
 

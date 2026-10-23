@@ -2,7 +2,6 @@
 .Rhistory
 .RData
 archives/
-paper/*.pdf
 *.aux
 *.log
 *.out

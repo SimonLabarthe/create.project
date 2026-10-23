@@ -87,8 +87,8 @@
 
 %=====================================================================%
 
-\title{\textbf{create.project: One-Call Reproducible Research Projects, R Packages and Papers}\thanks{Word count: [X,XXX]. }}
-\author{Simon Labarthe \\ \href{mailto:simon.labarthe@outlook.com}{\texttt{simon.labarthe@outlook.com}}}
+\title{\textbf{create.project: One-Call Reproducible Research Projects, R Packages and Papers}\thanks{Word count: about 1,000.}}
+\author{Simon Labarthe}
 \date{October 2026}
 
 \begin{document}
@@ -96,154 +96,182 @@
 \maketitle
 
 \begin{abstract}
-% 150-200 words. A reader should know after the abstract whether the package is for them.
-[1 sentence: the problem, in the user's words, not the package's]
-[1 sentence: who has this problem (researchers in X, analysts doing Y)]
-[1-2 sentences: what \texttt{create.project} does, and how it differs from existing tools]
-[1 sentence: key design idea (e.g.\ one call, convention over configuration, no dependencies)]
-[1 sentence: availability: open source, license, where to get it]
+Setting up an R project properly takes time: folders, git, pinned package versions, a license, a paper. Most people skip it and pay for it later. \texttt{create.project} does it in one call. \texttt{create\_project()} builds either a research project (a numbered data pipeline with \texttt{renv}) or an R package (the standard layout, with tests), and makes the first git commit. \texttt{create\_paper()} writes a LaTeX paper skeleton, for research or for software, that compiles on day one. Every step skips what already exists, so re-running is safe. The package is about 300 lines of R on top of \texttt{usethis}, \texttt{renv} and \texttt{gert}, and is open source under the MIT license.
 
 \medskip
-\noindent\textbf{Keywords:} R, [domain], [Keyword 3], [Keyword 4], reproducibility
+\noindent\textbf{Keywords:} R, reproducibility, project templates, research workflow, LaTeX
 \end{abstract}
 
 \newpage
 
 % =====================================================================
-\section{Introduction}\label{sec:intro} % ~10%
+\section{Statement of Need}\label{sec:need}
 
-\textbf{[The problem]}
-[Concrete situation where the problem bites. One example a reader recognises from their own work.]
+Good practices for research code are well known: keep raw data read-only, number the scripts in execution order, pin package versions, use version control, and generate figures instead of pasting them \citep{wilson2017, marwick2018}. They are also slow to set up, and the setup happens at the worst moment: the start of a project, when nothing seems at stake yet. So each project gets a different layout, or none.
 
-\textbf{[Why it matters]}
-[Cost of the problem: lost time, errors, non-reproducible results. Cite evidence if any exists.]
-
-\textbf{[What this package does]}
-[One paragraph: \texttt{create.project} provides [main functions], which [what they achieve].]
-
-\textbf{[Roadmap]}
-[\Cref{sec:need} states the need, \cref{sec:field} compares existing tools, \cref{sec:design} explains the design, \cref{sec:usage} shows usage, \cref{sec:quality} reports how it is tested, \cref{sec:limits} discusses limitations.]
+\texttt{create.project} makes the good default the fast default. It targets social scientists who write R, and anyone who writes small R packages. One call gives a project that a colleague, a reviewer, or the same person on another computer can rerun.
 
 % =====================================================================
-\section{Statement of Need}\label{sec:need} % ~10%
-[Who is the target user (field, skill level)? What do they do today without the package? Why is that insufficient? Be specific: a reviewer must be convinced the package fills a real gap, not reinvents a wheel.]
+\section{State of the Field}\label{sec:field}
 
-% =====================================================================
-\section{State of the Field}\label{sec:field} % ~15%
-[Name the existing tools and what each does well \citep{author2020}. Then state precisely what none of them does, which is what this package adds. Be fair to alternatives: say when they are the better choice.]
+\texttt{usethis} \citep{usethis} provides the building blocks (create a package, add a license, add tests) but no research layout and no paper. \texttt{rrtools} \citep{marwick2018} turns a research project into a package (a \enquote{research compendium}) with an R Markdown paper and Docker. \texttt{ProjectTemplate} \citep{projecttemplate} gives a data analysis layout. \texttt{workflowr} \citep{blischak2019} turns R Markdown analyses into a versioned website (\cref{tab:comparison}).
+
+\texttt{create.project} sits between them: research and package layouts behind one function, and a LaTeX paper rather than R Markdown. Users who write in R Markdown or Quarto are better served by \texttt{rrtools} or \texttt{workflowr}.
 
 \begin{table}[htbp]
     \centering
     \small
-    \caption{[Comparison with existing tools]}
+    \caption{Comparison with existing tools}
     \label{tab:comparison}
-    \begin{tabular}{l*{4}{c}}
+    \begin{tabular}{lccccc}
         \toprule
-        Feature             & \texttt{create.project} & [Tool A] & [Tool B] & [Tool C] \\
+                         & \texttt{create.project} & \texttt{usethis} & \texttt{rrtools} & \texttt{ProjectTemplate} & \texttt{workflowr} \\
         \midrule
-        {[Feature 1]}       & \checkmark & \checkmark &            &            \\
-        {[Feature 2]}       & \checkmark &            & \checkmark &            \\
-        {[Feature 3]}       & \checkmark &            &            & \checkmark \\
-        {[Dependencies]}    & [n]        & [n]        & [n]        & [n]        \\
+        Research layout  & \checkmark &            & \checkmark & \checkmark & \checkmark \\
+        Package layout   & \checkmark & \checkmark & \checkmark &            &            \\
+        Paper            & LaTeX      &            & R Markdown &            & R Markdown \\
+        Version pinning  & \texttt{renv} &         & Docker     &            &            \\
         \bottomrule
     \end{tabular}
 \end{table}
 
 % =====================================================================
-\section{Design}\label{sec:design} % ~20%
+\section{Design}\label{sec:design}
 
-\subsection{Design Principles}
-[2-4 principles that explain every decision, e.g.\ \enquote{convention over configuration}, \enquote{every step is idempotent}, \enquote{generated, not hand-written}. One short paragraph each.]
+\subsection{Principles}
+
+\begin{enumerate}[nosep]
+    \item \textbf{One call, sensible defaults.} Author, license and branch name are preset. The only required argument is the folder.
+    \item \textbf{Idempotent.} Every step skips what already exists. Re-running never overwrites work, and an existing folder can be upgraded.
+    \item \textbf{Delegate.} Files are created by \texttt{usethis}, environments by \texttt{renv} \citep{renv}, commits by \texttt{gert} \citep{gert}. The package only decides \emph{what} to create.
+    \item \textbf{The paper compiles on day one.} Placeholders in brackets are writing guidance; example figures and tables (Star Wars data) fill the blanks; a missing figure is drawn as a labelled box instead of breaking the build.
+\end{enumerate}
 
 \subsection{Architecture}
-[How the functions relate to each other and to what they produce (\cref{fig:architecture}). Which functions are exported, which are internal helpers, and why.]
+
+Two exported functions (\cref{fig:architecture}). \texttt{create\_project()} chooses a layout from \texttt{type}, then calls \texttt{create\_paper()} with the matching paper type. \texttt{create\_paper()} also works alone, in any project. \Cref{tab:layouts} lists what each layout contains.
 
 \begin{figure}[htbp]
     \centering
     \footnotesize
     \begin{tikzpicture}[box/.style={draw, rounded corners, align=center, minimum width=3.2cm, minimum height=1cm},
-                        result/.style={draw, dashed, align=center, minimum width=3.2cm, minimum height=1cm}]
-        \node[box] (user) at (0,0)  {user call};
-        \node[box] (f1)   at (4,1)  {\texttt{[function\_1()]}};
-        \node[box] (f2)   at (4,-1) {\texttt{[function\_2()]}};
-        \node[result] (o1) at (8.5,1)  {[output 1]};
-        \node[result] (o2) at (8.5,-1) {[output 2]};
+                        result/.style={draw, dashed, align=center, minimum width=3.4cm, minimum height=1cm}]
+        \node[box]    (cp)  at (0,0)     {\texttt{create\_project()}};
+        \node[result] (res) at (5,1.2)   {research layout\\+ \texttt{renv}};
+        \node[result] (pkg) at (5,-1.2)  {package layout\\+ tests};
+        \node[box]    (pp)  at (10,0)    {\texttt{create\_paper()}};
+        \node[result] (tex) at (10,-2.4) {\texttt{main.tex}, figures,\\\texttt{references.bib}};
+        \node[result] (git) at (0,-2.4)  {first git commit\\(+ GitHub)};
 
-        \draw[-{Stealth}, thick] (user) -- (f1);
-        \draw[-{Stealth}, thick] (f1) -- node[right] {calls} (f2);
-        \draw[-{Stealth}, thick] (f1) -- (o1);
-        \draw[-{Stealth}, thick] (f2) -- (o2);
+        \tikzset{lab/.style={midway, fill=white, inner sep=1pt, font=\scriptsize\ttfamily}}
+        \draw[-{Stealth}, thick] (cp)  -- node[lab] {"research"} (res);
+        \draw[-{Stealth}, thick] (cp)  -- node[lab] {"package"}  (pkg);
+        \draw[-{Stealth}, thick] (res) -- node[lab] {"research"} (pp);
+        \draw[-{Stealth}, thick] (pkg) -- node[lab] {"software"} (pp);
+        \draw[-{Stealth}, thick] (pp) -- (tex);
+        \draw[-{Stealth}, thick] (cp) -- (git);
     \end{tikzpicture}
-    \caption{[Architecture: exported functions and what they produce]}
+    \caption{Architecture: two exported functions and what they produce}
     \label{fig:architecture}
 \end{figure}
 
-\subsection{Key Decisions and Trade-offs}
-[What did you choose NOT to do, and why? Each feature you left out is a decision a reviewer will ask about. E.g.\ \enquote{we rely on \texttt{usethis} rather than reimplementing file creation, at the cost of one dependency}.]
+\begin{table}[htbp]
+    \centering
+    \small
+    \caption{The two layouts}
+    \label{tab:layouts}
+    \begin{tabular}{ll}
+        \toprule
+        \texttt{type = "research"}                    & \texttt{type = "package"}                        \\
+        \midrule
+        \texttt{1\_raw\_data/} never edited by hand   & \texttt{R/} all functions                         \\
+        \texttt{2\_scripts/} numbered = run order     & \texttt{man/} generated documentation             \\
+        \texttt{3\_derived\_data/} regenerated        & \texttt{tests/testthat/} unit tests               \\
+        \texttt{4\_outputs/} figures, tables          & \texttt{vignettes/} tutorial                      \\
+        \texttt{5\_docs/} research paper              & \texttt{data-raw/} scripts that build \texttt{data/} \\
+        \texttt{6\_archives/} old material            & \texttt{inst/CITATION}                            \\
+        \texttt{renv/} pinned package versions        & \texttt{paper/} software paper                    \\
+        \midrule
+        \multicolumn{2}{l}{both: \texttt{DESCRIPTION}, \texttt{.Rproj}, \texttt{LICENSE}, \texttt{README.md}, ignore files, git} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Decisions and Trade-offs}
+
+\begin{itemize}[nosep]
+    \item \textbf{One function with \texttt{type}, not two functions.} About 80\% of the steps are shared; two functions would drift apart.
+    \item \textbf{\texttt{renv} for research only.} A package declares its dependencies in \texttt{DESCRIPTION}; pinning them would fight its users.
+    \item \textbf{No options that nobody used.} Flags for git, \texttt{renv} and data splits, a generated folder map and a per-computer setup function were removed: each cost code and explanation for little benefit.
+    \item \textbf{The repository is named after the package} (\texttt{my.project}, not \texttt{my\_project}), because \texttt{usethis} does so and offers no override.
+    \item \textbf{Example figures are drawn, not copied.} The duel in \cref{fig:output} is made with \texttt{ggplot2}; film stills are copyrighted.
+\end{itemize}
 
 % =====================================================================
-\section{Usage}\label{sec:usage} % ~20%
+\section{Usage}\label{sec:usage}
 
-\subsection{Installation}
+Install once, and keep \texttt{renv} libraries out of synced folders (OneDrive, Dropbox) with one line in the user \texttt{.Renviron}:
 
 \begin{lstlisting}
 remotes::install_github("SimonLabarthe/create.project")
-library(create.project)
+usethis::edit_r_environ()   # add: RENV_PATHS_LIBRARY_ROOT=<local folder>
 \end{lstlisting}
 
-\subsection{Minimal Example}
-[The smallest call that shows the value of the package. The reader should be able to copy-paste it.]
+Then one call per project:
 
 \begin{lstlisting}
-# [what this example does]
-[function_1](["argument"])
+library(create.project)
+
+create_project("~/seminar/inequality", title = "Inequality and Repression")
+create_project("~/dev/coolfun", type = "package")
+create_paper("5_docs")          # only the paper, in an existing project
 \end{lstlisting}
 
-[Describe the output: what was created or returned, and why it is useful.]
-
-\subsection{Realistic Example}
-[A longer case that mirrors real use: options, combinations of functions, edge cases. Show the output (table, figure, file tree) as in \cref{fig:output}.]
+The research call writes the six folders, five numbered script templates, a paper and a first commit. The paper already contains a causal diagram, two tables and five figures (\cref{fig:output}); each is an example to replace.
 
 \begin{figure}[htbp]
     \centering
-    \safegraphic[width=0.8\textwidth]{output_example.pdf}
-    \caption{[Output of the realistic example]}
+    \begin{subfigure}{0.32\textwidth}
+        \fbox{\safegraphic[width=0.95\linewidth]{demo_page3.png}}
+        \caption{Causal diagram}
+    \end{subfigure}\hfill
+    \begin{subfigure}{0.32\textwidth}
+        \fbox{\safegraphic[width=0.95\linewidth]{demo_page6.png}}
+        \caption{Results}
+    \end{subfigure}\hfill
+    \begin{subfigure}{0.32\textwidth}
+        \fbox{\safegraphic[width=0.95\linewidth]{demo_page7.png}}
+        \caption{Figure grid}
+    \end{subfigure}
+    \caption{Three pages of a freshly generated research paper, before any writing}
     \label{fig:output}
 \end{figure}
 
 % =====================================================================
-\section{Quality and Validation}\label{sec:quality} % ~10%
-[How do you know it works? Unit tests (\texttt{testthat}, number of tests, coverage), \texttt{R CMD check} status, continuous integration, platforms tested (Windows, macOS, Linux). If the package computes results, compare them with a reference implementation or known values.]
+\section{Quality and Validation}\label{sec:quality}
+
+22 \texttt{testthat} expectations cover both layouts, re-running on an existing project, the paper templates and the escaping of LaTeX special characters. \texttt{R CMD check} reports no errors, warnings or notes, and so does a package freshly generated with \texttt{type = "package"}. Both paper types compile without LaTeX warnings with \texttt{pdflatex} and \texttt{biber}. Everything was tested on Windows 11 with R 4.5.2.
 
 % =====================================================================
-\section{Limitations and Future Work}\label{sec:limits} % ~10%
-[Be honest: what it does not do, when it fails, which platforms are untested. Then the roadmap: 2-3 concrete next features.]
+\section{Limitations and Future Work}\label{sec:limits}
+
+Defaults (author, GitHub account) are the author's own: other users must pass them as arguments. macOS and Linux are untested. Papers are LaTeX only. Next steps: read personal defaults from \texttt{options()}, add a continuous integration workflow, and offer a Quarto paper.
 
 % =====================================================================
-\section{Conclusion}\label{sec:conclusion} % ~5%
-[Restate the problem and how \texttt{create.project} solves it, in two or three sentences. No new information.]
+\section{Conclusion}\label{sec:conclusion}
+
+Good project structure is cheap once it is one function call away. \texttt{create.project} makes that call, and gives the paper a head start.
 
 % =====================================================================
 \section*{Software Availability}
 \begin{itemize}[nosep]
     \item Repository: \url{https://github.com/SimonLabarthe/create.project}
-    \item Version described: [0.1.0], archived at [Zenodo DOI]
-    \item License: [MIT]
-    \item Requirements: R $\geq$ [4.1], [dependencies]
+    \item Version described: 0.3.0
+    \item License: MIT
+    \item Requirements: R, and a LaTeX distribution (e.g.\ TinyTeX) for the papers
 \end{itemize}
-
-\section*{Acknowledgements}
-[People, funding, and the packages this one builds on.]
 
 \newpage
 \printbibliography
-
-\newpage
-\appendix
-\section{Function Reference}\label{app:reference}
-[One entry per exported function: signature, arguments, return value. Can be generated from the roxygen documentation.]
-
-\section{Session Information}\label{app:session}
-[Output of \texttt{sessionInfo()} for the examples in this paper.]
 
 \end{document}

@@ -23,6 +23,7 @@ test_that("package layout follows R package conventions", {
   expect_false(dir.exists(file.path(path, "1_raw_data")))
   expect_false(dir.exists(file.path(path, "renv")))
   expect_true("^paper$" %in% readLines(file.path(path, ".Rbuildignore")))
+  expect_true(any(grepl("Statement of Need", readLines(file.path(path, "paper", "main.tex")))))
 })
 
 test_that("re-running keeps existing files", {

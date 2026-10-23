@@ -15,3 +15,15 @@ test_that("an existing main.tex is never overwritten", {
   create_paper(dir)
   expect_equal(readLines(file.path(dir, "main.tex")), "my draft")
 })
+
+test_that("software papers get their own body and the package name", {
+  dir <- withr::local_tempdir()
+  create_paper(dir, "software", package = "coolfun",
+               repo_url = "https://github.com/me/coolfun")
+  tex <- paste(readLines(file.path(dir, "main.tex")), collapse = "\n")
+
+  expect_match(tex, "Statement of Need", fixed = TRUE)
+  expect_false(grepl("Theoretical Framework", tex, fixed = TRUE))
+  expect_match(tex, "remotes::install_github(\"me/coolfun\")", fixed = TRUE)
+  expect_match(tex, "\\usepackage{listings}", fixed = TRUE)   # shared preamble
+})

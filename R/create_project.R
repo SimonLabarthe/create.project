@@ -68,12 +68,12 @@ create_project <- function(path,
   # 2. layout + paper
   if (type == "research") {
     research_layout(author)
-    create_paper("5_docs", title, author, email,
+    create_paper("5_docs", "research", title, author, email,
                  figures_dir = "../4_outputs/figures/", repo_url = repo_url)
   } else {
     package_layout()
-    create_paper("paper", title, author, email,
-                 figures_dir = "figures/", repo_url = repo_url)
+    create_paper("paper", "software", title, author, email,
+                 figures_dir = "figures/", repo_url = repo_url, package = pkg)
   }
   write_readme(type, name, repo_url)
 

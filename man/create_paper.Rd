@@ -6,6 +6,7 @@
 \usage{
 create_paper(
   dir = "5_docs",
+  type = c("research", "software"),
   title = "[Insert Title]",
   author = "Simon Labarthe",
   email = NULL,
@@ -14,11 +15,14 @@ create_paper(
   date = format(Sys.Date(), "\%B \%Y"),
   bib_style = "apa",
   figures_dir = "../4_outputs/figures/",
-  repo_url = "[link]"
+  repo_url = "[link]",
+  package = "[package]"
 )
 }
 \arguments{
 \item{dir}{folder where the paper is written (created if needed)}
+
+\item{type}{"research" or "software"}
 
 \item{title}{paper title}
 
@@ -36,18 +40,31 @@ create_paper(
 
 \item{figures_dir}{where LaTeX looks for figures, relative to \code{dir} (keep the trailing /)}
 
-\item{repo_url}{replication repository, printed in the appendix}
+\item{repo_url}{repository URL, printed in the appendix / availability section}
+
+\item{package}{software only: package name used in the text and code examples}
 }
 \value{
 the path of main.tex, invisibly
 }
 \description{
-writes \code{main.tex} and \code{references.bib} into \code{dir}. the template's
-\code{{{name}}} placeholders are filled from the arguments; everything in
-\verb{[...]} is writing guidance for you to replace. existing files are kept.
+writes \code{main.tex} and \code{references.bib} into \code{dir}. \code{main.tex} is the shared
+preamble (\code{inst/templates/paper/preamble.tex}) followed by the body for
+\code{type}. the \code{{{name}}} placeholders are filled from the arguments;
+everything in \verb{[...]} is writing guidance for you to replace. existing
+files are kept.
+}
+\details{
+\itemize{
+\item \code{type = "research"}: empirical social science (theory, hypotheses,
+research design, results, robustness).
+\item \code{type = "software"}: a paper introducing an R package (statement of
+need, comparison with existing tools, design, usage, validation).
+}
 }
 \examples{
 \dontrun{
 create_paper("5_docs", title = "Why does X affect Y?")
+create_paper("paper", type = "software", package = "coolfun")
 }
 }

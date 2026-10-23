@@ -1,12 +1,20 @@
-# create a paper skeleton (main.tex + references.bib) from inst/templates/paper.tex
+# create a paper skeleton (main.tex + references.bib) from inst/templates/paper/
 
 #' create a LaTeX paper skeleton
 #'
-#' writes `main.tex` and `references.bib` into `dir`. the template's
-#' `{{name}}` placeholders are filled from the arguments; everything in
-#' `[...]` is writing guidance for you to replace. existing files are kept.
+#' writes `main.tex` and `references.bib` into `dir`. `main.tex` is the shared
+#' preamble (`inst/templates/paper/preamble.tex`) followed by the body for
+#' `type`. the `{{name}}` placeholders are filled from the arguments;
+#' everything in `[...]` is writing guidance for you to replace. existing
+#' files are kept.
+#'
+#' * `type = "research"`: empirical social science (theory, hypotheses,
+#'   research design, results, robustness).
+#' * `type = "software"`: a paper introducing an R package (statement of
+#'   need, comparison with existing tools, design, usage, validation).
 #'
 #' @param dir         folder where the paper is written (created if needed)
+#' @param type        "research" or "software"
 #' @param title       paper title
 #' @param author      author name
 #' @param email       author email, or NULL
@@ -15,14 +23,17 @@
 #' @param date        date printed under the title
 #' @param bib_style   biblatex style, e.g. "apa", "authoryear", "chicago-authordate"
 #' @param figures_dir where LaTeX looks for figures, relative to `dir` (keep the trailing /)
-#' @param repo_url    replication repository, printed in the appendix
+#' @param repo_url    repository URL, printed in the appendix / availability section
+#' @param package     software only: package name used in the text and code examples
 #' @return the path of main.tex, invisibly
 #' @export
 #' @examples
 #' \dontrun{
 #' create_paper("5_docs", title = "Why does X affect Y?")
+#' create_paper("paper", type = "software", package = "coolfun")
 #' }
 create_paper <- function(dir         = "5_docs",
+                         type        = c("research", "software"),
                          title       = "[Insert Title]",
                          author      = "Simon Labarthe",
                          email       = NULL,
@@ -31,14 +42,17 @@ create_paper <- function(dir         = "5_docs",
                          date        = format(Sys.Date(), "%B %Y"),
                          bib_style   = "apa",
                          figures_dir = "../4_outputs/figures/",
-                         repo_url    = "[link]") {
+                         repo_url    = "[link]",
+                         package     = "[package]") {
+  type     <- match.arg(type)
   tex_path <- file.path(dir, "main.tex")
   bib_path <- file.path(dir, "references.bib")
   fs::dir_create(dir)
 
   if (!file.exists(tex_path)) {
-    template <- system.file("templates", "paper.tex", package = "create.project", mustWork = TRUE)
-    tex      <- paste(readLines(template, encoding = "UTF-8"), collapse = "\n")
+    parts <- system.file("templates", "paper", c("preamble.tex", paste0(type, ".tex")),
+                         package = "create.project", mustWork = TRUE)
+    tex   <- paste(unlist(lapply(parts, readLines, encoding = "UTF-8")), collapse = "\n")
 
     author_block <- paste(c(
       escape_latex(author),
@@ -58,7 +72,9 @@ create_paper <- function(dir         = "5_docs",
       bib_style    = bib_style,
       bib_file     = "references.bib",
       figures_dir  = figures_dir,
-      repo_url     = if (grepl("^http", repo_url)) sprintf("\\url{%s}", repo_url) else repo_url
+      repo_url     = if (grepl("^http", repo_url)) sprintf("\\url{%s}", repo_url) else repo_url,
+      repo         = if (grepl("^https://github.com/", repo_url)) sub("^https://github.com/", "", repo_url) else "[user/repo]",
+      package      = package
     )
 
     # regmatches<- inserts the value literally: gsub() would read the

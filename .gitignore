@@ -14,4 +14,4 @@ archives/
 *.fdb_latexmk
 *.synctex.gz
 
-quarto_examples/
+paper/quarto_examples/

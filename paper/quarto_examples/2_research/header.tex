@@ -1,0 +1,20 @@
+% =====================================================================
+% LaTeX added to the PDF made from main.qmd (format: pdf: include-in-header)
+% same look as the LaTeX paper of create_paper(format = "latex")
+% Quarto already loads: geometry, hyperref, xcolor, graphicx, amsmath,
+% booktabs. only what it does not load (or loads too late) goes here.
+% =====================================================================
+
+% ---- Fonts, spacing -------------------------------------------------
+\usepackage{lmodern}            % vector version of the default font
+\usepackage{microtype}          % better spacing and line breaks, for free
+\usepackage{setspace}
+\onehalfspacing
+
+% ---- Figures, tables ------------------------------------------------
+\usepackage{tikz}               % diagrams written in LaTeX (see the DAG in main.qmd)
+\usetikzlibrary{positioning, arrows.meta}
+\usepackage{caption}
+\captionsetup{font=small, labelfont=bf}
+\usepackage{float}              % [H] placement when you really need it
+\usepackage{pdflscape}          % \begin{landscape} for wide tables

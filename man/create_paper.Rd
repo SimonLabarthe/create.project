@@ -2,7 +2,7 @@
 % Please edit documentation in R/create_paper.R
 \name{create_paper}
 \alias{create_paper}
-\title{create a LaTeX paper skeleton}
+\title{create a paper skeleton, in LaTeX or Quarto}
 \usage{
 create_paper(
   dir = "5_docs",
@@ -16,7 +16,8 @@ create_paper(
   bib_style = "apa",
   figures_dir = "../4_outputs/figures/",
   repo_url = "[link]",
-  package = "[package]"
+  package = "[package]",
+  format = c("latex", "quarto")
 )
 }
 \arguments{
@@ -36,26 +37,37 @@ create_paper(
 
 \item{date}{date printed under the title}
 
-\item{bib_style}{biblatex style, e.g. "apa", "authoryear", "chicago-authordate"}
+\item{bib_style}{reference style. latex: a biblatex style, e.g. "apa",
+"authoryear", "chicago-authordate". quarto: "apa" (shipped), or the name
+of any style on \url{https://www.zotero.org/styles}, e.g. "chicago-author-date"
+(downloaded when the paper is rendered)}
 
-\item{figures_dir}{where LaTeX looks for figures, relative to \code{dir} (keep the trailing /)}
+\item{figures_dir}{where the paper looks for figures, relative to \code{dir} (keep the trailing /)}
 
 \item{repo_url}{repository URL, printed in the appendix / availability section}
 
 \item{package}{software only: package name used in the text and code examples}
+
+\item{format}{"latex" or "quarto"}
 }
 \value{
-the path of main.tex, invisibly
+the path of main.tex or main.qmd, invisibly
 }
 \description{
-writes \code{main.tex} and \code{references.bib} into \code{dir}. \code{main.tex} is the shared
-preamble (\code{inst/templates/paper/preamble.tex}) followed by the body for
-\code{type}. the \code{{{name}}} placeholders are filled from the arguments;
-everything in \verb{[...]} is writing guidance for you to replace. existing
-files are kept.
+writes the paper and \code{references.bib} into \code{dir}. the \code{{{name}}}
+placeholders are filled from the arguments; everything in \verb{[...]} is
+writing guidance for you to replace. existing files are kept.
 }
 \details{
 \itemize{
+\item \code{format = "latex"}: \code{main.tex}, the shared preamble
+(\code{inst/templates/paper/preamble.tex}) followed by the body for \code{type}.
+compile it with \code{\link[=compile_paper]{compile_paper()}}, not RStudio's "Compile PDF" button
+(the button runs BibTeX, so the references stay empty).
+\item \code{format = "quarto"}: \code{main.qmd} (\verb{inst/templates/paper/quarto/}), text in
+Markdown, tables and numbers computed by R when the paper is rendered.
+comes with \code{header.tex} (same look as the LaTeX paper) and \code{apa.csl}
+(reference style). render it with the Render button in RStudio.
 \item \code{type = "research"}: empirical social science (theory, hypotheses,
 research design, results, robustness).
 \item \code{type = "software"}: a paper introducing an R package (statement of
@@ -65,6 +77,7 @@ need, comparison with existing tools, design, usage, validation).
 \examples{
 \dontrun{
 create_paper("5_docs", title = "Why does X affect Y?")
+create_paper("5_docs", format = "quarto")
 create_paper("paper", type = "software", package = "package")
 }
 }

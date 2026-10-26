@@ -11,7 +11,8 @@ create_project(
   author = "Simon Labarthe",
   email = "simon.labarthe@outlook.com",
   github_user = "SimonLabarthe",
-  publish_github = FALSE
+  publish_github = FALSE,
+  format = c("latex", "quarto")
 )
 }
 \arguments{
@@ -27,6 +28,8 @@ create_project(
 
 \item{publish_github}{TRUE creates a private GitHub repo and pushes
 (needs a token once: \code{usethis::create_github_token()})}
+
+\item{format}{the paper: "latex" (main.tex) or "quarto" (main.qmd), see \code{\link[=create_paper]{create_paper()}}}
 }
 \value{
 the project path, invisibly

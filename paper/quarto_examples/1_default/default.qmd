@@ -1,0 +1,56 @@
+---
+title: "Does Fear Lead to the Dark Side?"
+author: "Simon Labarthe"
+date: today
+abstract: |
+  Quarto's default look: no layout options at all, only `format: pdf`.
+  Text is Markdown, numbers come from R chunks, and references from `references.bib`.
+format: pdf
+bibliography: references.bib
+---
+
+# Introduction {#sec-intro}
+
+This is a paragraph in **Markdown**: *italics*, **bold**, `code`, and a citation [@wilson2017].
+A narrative citation: @marwick2018 argue that a project should be a package.
+@sec-data describes the data, @tbl-descr summarises it and @fig-main shows the main result.
+
+# Data and Model {#sec-data}
+
+The example data has `r nrow(dplyr::starwars)` characters. This number is written by R
+when the document is rendered: it never goes stale.
+
+```{r}
+#| label: tbl-descr
+#| tbl-cap: "Descriptive statistics"
+#| echo: false
+sw <- dplyr::starwars
+vars <- c(Height = "height", Mass = "mass", `Birth year` = "birth_year")
+knitr::kable(data.frame(
+  Variable = names(vars),
+  N    = sapply(vars, \(v) sum(!is.na(sw[[v]]))),
+  Mean = sapply(vars, \(v) mean(sw[[v]], na.rm = TRUE)),
+  SD   = sapply(vars, \(v) sd(sw[[v]], na.rm = TRUE))
+), digits = 1, row.names = FALSE)
+```
+
+We estimate @eq-main by OLS.
+
+$$
+Y_i = \alpha + \beta X_i + \varepsilon_i
+$$ {#eq-main}
+
+# Results {#sec-results}
+
+```{r}
+#| label: fig-main
+#| fig-cap: "Taller characters are heavier"
+#| echo: false
+sw <- subset(sw, mass < 1000)
+plot(mass ~ height, data = sw, pch = 19, xlab = "Height (cm)", ylab = "Mass (kg)")
+abline(lm(mass ~ height, data = sw))
+```
+
+One more centimetre is associated with `r round(coef(lm(mass ~ height, data = sw))[2], 2)` kg more.
+
+# References

@@ -2,6 +2,7 @@
 # run from the project root, with the package installed (devtools::install())
 
 library(create.project)
+source(here::here("R", "create_paper.R"))
 
 demo <- file.path(tempdir(), "demo", "5_docs")
 create_paper(demo, "research")

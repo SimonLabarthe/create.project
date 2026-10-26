@@ -13,3 +13,5 @@ archives/
 *.fls
 *.fdb_latexmk
 *.synctex.gz
+
+quarto_examples/

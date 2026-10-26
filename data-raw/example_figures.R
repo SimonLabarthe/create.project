@@ -13,45 +13,7 @@ sw <- starwars |> filter(!is.na(height), !is.na(mass), mass < 1000)   # drop Jab
 heroes <- c("Darth Vader", "Luke Skywalker")
 theme_set(theme_minimal(base_size = 13))
 
-# 1. the duel ------------------------------------------------------------------
-fighter <- function(x, side, body, label) {
-  # side = +1 faces right, -1 faces left
-  segs <- data.frame(
-    x    = c(x, x, x, x, x),
-    y    = c(5.8, 3.8, 3.8, 5.4, 5.4),
-    xend = c(x, x - 0.6, x + 0.6, x - side * 0.7, x + side * 0.9),
-    yend = c(3.8, 2, 2, 4.6, 5.0)
-  )
-  list(
-    geom_segment(data = segs, aes(x, y, xend = xend, yend = yend),
-                 colour = body, linewidth = 3, lineend = "round"),
-    annotate("point", x, 6.3, size = 14, colour = body),
-    annotate("text", x, 1.4, label = label, colour = "grey85", size = 5)
-  )
-}
-saber <- function(x, y, xend, yend, colour) list(
-  annotate("segment", x = x, y = y, xend = xend, yend = yend,
-           colour = colour, linewidth = 7, alpha = 0.3, lineend = "round"),   # glow
-  annotate("segment", x = x, y = y, xend = xend, yend = yend,
-           colour = "white", linewidth = 1.5, lineend = "round")              # core
-)
-set.seed(1977)
-stars <- data.frame(x = runif(150, 0, 10), y = runif(150, 0, 8))
-
-duel <- ggplot() +
-  geom_point(data = stars, aes(x, y), colour = "white", size = 0.3, alpha = 0.7) +
-  annotate("polygon", x = c(2.6, 3.4, 3.9, 2.1), y = c(5.8, 5.8, 2.2, 2.2),
-           fill = "grey15") +                                                  # cape
-  fighter(3, +1, "grey35", "Darth Vader") +
-  fighter(7, -1, "wheat3", "Luke Skywalker") +
-  saber(3.9, 5.0, 5.6, 7.3, "red") +
-  saber(6.1, 5.0, 4.4, 7.3, "deepskyblue") +
-  coord_fixed(xlim = c(0, 10), ylim = c(1, 8)) +
-  theme_void() +
-  theme(plot.background = element_rect(fill = "#0b0b1a", colour = NA))
-save(duel, "example_duel.pdf")
-
-# 2. height and mass ------------------------------------------------------------
+# height and mass ------------------------------------------------------------
 height_mass <- ggplot(sw, aes(height, mass)) +
   geom_smooth(method = "lm", formula = y ~ x, colour = "grey40") +
   geom_point(alpha = 0.6) +
@@ -63,7 +25,7 @@ height_mass <- ggplot(sw, aes(height, mass)) +
 
 save(height_mass, "example_height_mass.pdf")
 
-# 3. three bar charts for the 2x2 grid ------------------------------------------
+# three bar charts for the 2x2 grid ------------------------------------------
 top_bar <- function(var, xlab) {
   starwars |>
     filter(!is.na({{ var }})) |>
@@ -86,7 +48,7 @@ films <- starwars |>
   theme_bw()
 save(films, "example_films.pdf")
 
-# 4. numbers for the template tables --------------------------------------------
+# numbers for the template tables --------------------------------------------
 descriptives <- sw |>
   mutate(birth_year = ifelse(is.na(birth_year), NA, birth_year)) |>
   select(height, mass, birth_year) |>

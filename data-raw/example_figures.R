@@ -58,7 +58,9 @@ height_mass <- ggplot(sw, aes(height, mass)) +
   geom_point(data = filter(sw, name %in% heroes), colour = "red", size = 3) +
   geom_text(data = filter(sw, name %in% heroes), aes(label = name),
             nudge_y = 12, colour = "red") +
-  labs(x = "Height (cm)", y = "Mass (kg)")
+  labs(x = "Height (cm)", y = "Mass (kg)") +
+  theme_bw()
+
 save(height_mass, "example_height_mass.pdf")
 
 # 3. three bar charts for the 2x2 grid ------------------------------------------
@@ -69,7 +71,8 @@ top_bar <- function(var, xlab) {
     slice_head(n = 6) |>
     ggplot(aes(n, reorder({{ var }}, n))) +
     geom_col(fill = "grey30") +
-    labs(x = xlab, y = NULL)
+    labs(x = xlab, y = NULL)+
+    theme_bw()
 }
 save(top_bar(species, "Characters"), "example_species.pdf")
 save(top_bar(homeworld, "Characters"), "example_homeworld.pdf")
@@ -79,7 +82,8 @@ films <- starwars |>
   slice_max(n_films, n = 6, with_ties = FALSE) |>
   ggplot(aes(n_films, reorder(name, n_films))) +
   geom_col(fill = "grey30") +
-  labs(x = "Films", y = NULL)
+  labs(x = "Films", y = NULL)+
+  theme_bw()
 save(films, "example_films.pdf")
 
 # 4. numbers for the template tables --------------------------------------------

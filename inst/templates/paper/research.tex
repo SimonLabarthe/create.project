@@ -127,11 +127,13 @@
 
 % example numbers: dplyr::starwars. once your R scripts write the table,
 % replace the tabular below with \input{../4_outputs/tables/descriptives.tex}
+% (keep it inside the adjustbox: a wide table is shrunk to the margins)
 \begin{table}[htbp]
     \centering
     \footnotesize
     \caption{Descriptive statistics (example: Star Wars characters)}
     \label{tab:descr}
+    \begin{adjustbox}{max width=\linewidth}
     \begin{tabular}{l*{5}{c}}
         \toprule
         Variable         & N  & Mean  & SD    & Min & Max \\
@@ -141,6 +143,7 @@
         Birth year (BBY) & 35 & 76.6  & 147.0 & 8   & 896 \\
         \bottomrule
     \end{tabular}
+    \end{adjustbox}
 \end{table}
 
 \subsection{Model Specification} % 20% of design

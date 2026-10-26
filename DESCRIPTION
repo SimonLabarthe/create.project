@@ -5,8 +5,8 @@ Authors@R:
     person("Simon", "Labarthe", , "simon.labarthe@outlook.com", role = c("aut", "cre"))
 Description: Bootstraps a project in one call. 'research' projects get a
     numbered data pipeline with renv; 'package' projects get the standard R
-    package layout. Both get git, a license, a README and a LaTeX paper
-    skeleton built on good practices.
+    package layout. Both get git, a license, a README and a paper skeleton
+    (LaTeX or Quarto) built on good practices.
 License: MIT + file LICENSE
 URL: https://github.com/SimonLabarthe/create.project
 Imports:
@@ -16,7 +16,9 @@ Imports:
     usethis,
     utils
 Suggests:
+    quarto,
     testthat (>= 3.0.0),
+    tinytex,
     withr
 Config/testthat/edition: 3
 Encoding: UTF-8

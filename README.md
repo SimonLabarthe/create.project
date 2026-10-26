@@ -5,7 +5,8 @@ two functions to start any project, on any computer.
 ``` r
 create_project(path, type = "research")   # data pipeline + renv + paper in 5_docs/
 create_project(path, type = "package")    # R package + paper in paper/
-create_paper(dir)                         # just the LaTeX paper, in any project
+create_paper(dir)                         # just the paper, in any project
+compile_paper(dir)                        # paper -> PDF, with its references
 ```
 
 ## install
@@ -38,15 +39,35 @@ both: `DESCRIPTION`, `NAMESPACE`, `.Rproj`, `LICENSE`, `README.md`, `.gitignore`
 
 ## paper templates
 
-```r
+``` r
 create_paper("5_docs", type = "research")                     # theory, hypotheses, design, results
 create_paper("paper",  type = "software", package = "coolfun") # need, existing tools, design, usage, tests
 ```
 
 `create_project()` picks the type for you: `research` projects get a research paper, `package` projects a software paper.
 
-the templates are plain LaTeX in `inst/templates/paper/`: `preamble.tex` (packages, title, shared by both) + one body per type.
-`{{name}}` is filled by `create_paper()`, `[...]` is writing guidance. after editing, reinstall (`devtools::install()`).
+### LaTeX or Quarto
+
+``` r
+create_paper("5_docs")                     # main.tex (default)
+create_paper("5_docs", format = "quarto")  # main.qmd
+create_project(path, format = "quarto")    # same, for a whole project
+```
+
+|   | LaTeX (`main.tex`) | Quarto (`main.qmd`) |
+|----|----|----|
+| you write | LaTeX | Markdown (+ LaTeX when needed) |
+| tables, numbers in the text | written by your scripts, or copied by hand | computed by R when the paper is rendered: never stale |
+| to PDF | `compile_paper("5_docs")` | Render button in RStudio |
+| look | `preamble.tex` | `header.tex`: same look as the LaTeX paper |
+
+LaTeX papers: do not use RStudio's "Compile PDF" button. it runs BibTeX, the templates use biblatex + Biber, so the references stay empty. `compile_paper()` runs Biber (or `latexmk -pdf main.tex` in a terminal).
+
+Quarto papers need `install.packages(c("dplyr", "modelsummary"))` for the example tables. references use `apa.csl`; another style: `create_paper(bib_style = "chicago-author-date", format = "quarto")` (any name from <https://www.zotero.org/styles>).
+
+### editing the templates
+
+LaTeX: `inst/templates/paper/preamble.tex` (packages, title, shared by both) + one body per type. Quarto: `inst/templates/paper/quarto/`: one `.qmd` per type, `header.tex`, `apa.csl`. `{{name}}` is filled by `create_paper()`, `[...]` is writing guidance. after editing, reinstall (`devtools::install()`).
 
 no blank boxes: the templates ship with example figures and tables made from `dplyr::starwars` (and a lightsaber duel drawn in R). `create_paper()` copies the figures (`example_*.pdf`) into the figures folder; replace them with yours.
 
@@ -55,13 +76,15 @@ no blank boxes: the templates ship with example figures and tables made from `dp
 | file | role |
 |----|----|
 | `R/create_project.R` | `create_project()` and its layout helpers |
-| `R/create_paper.R` | `create_paper()` |
+| `R/create_paper.R` | `create_paper()`, `compile_paper()` |
 | `inst/templates/paper/preamble.tex` | LaTeX packages and title block, shared by both paper types |
 | `inst/templates/paper/research.tex` | body of a research paper |
 | `inst/templates/paper/software.tex` | body of a software paper |
+| `inst/templates/paper/quarto/` | the same two papers in Quarto: `research.qmd`, `software.qmd`, `header.tex` (LaTeX look), `apa.csl` (reference style, CC BY-SA, from the CSL project) |
 | `inst/templates/paper/figures/` | example figures copied into new papers |
 | `data-raw/example_figures.R` | makes those figures and the example table numbers (build-ignored) |
 | `paper/` | the paper introducing this package; `make_figures.R` makes its figures (build-ignored) |
+| `paper/quarto_examples/` | `1_default/`: Quarto with no layout at all; `2_research/`, `3_software/`: `create_paper(format = "quarto")` rendered |
 | `inst/templates/project.Rproj` | RStudio settings copied into new projects |
 | `tests/testthat/` | tests, run with `devtools::test()` |
 | `DESCRIPTION`, `LICENSE` | package metadata |

@@ -17,6 +17,7 @@
 #' @param github_user    GitHub account, used for the repo URL
 #' @param publish_github TRUE creates a private GitHub repo and pushes
 #'   (needs a token once: `usethis::create_github_token()`)
+#' @param format         the paper: "latex" (main.tex) or "quarto" (main.qmd), see [create_paper()]
 #' @return the project path, invisibly
 #' @export
 #' @examples
@@ -30,8 +31,10 @@ create_project <- function(path,
                            author         = "Simon Labarthe",
                            email          = "simon.labarthe@outlook.com",
                            github_user    = "SimonLabarthe",
-                           publish_github = FALSE) {
-  type <- match.arg(type)
+                           publish_github = FALSE,
+                           format         = c("latex", "quarto")) {
+  type   <- match.arg(type)
+  format <- match.arg(format)
   if (type == "research" && !nzchar(Sys.getenv("RENV_PATHS_LIBRARY_ROOT"))) {
     stop("RENV_PATHS_LIBRARY_ROOT is not set: see 'once per computer' in the README")
   }
@@ -69,13 +72,13 @@ create_project <- function(path,
   if (type == "research") {
     research_layout(author)
     create_paper("5_docs", "research", title, author, email,
-                 figures_dir = "../4_outputs/figures/", repo_url = repo_url)
+                 figures_dir = "../4_outputs/figures/", repo_url = repo_url, format = format)
   } else {
     package_layout()
     create_paper("paper", "software", title, author, email,
-                 figures_dir = "figures/", repo_url = repo_url, package = pkg)
+                 figures_dir = "figures/", repo_url = repo_url, package = pkg, format = format)
   }
-  write_readme(type, name, repo_url)
+  write_readme(type, name, repo_url, format)
 
   # 3. renv: last before git, so its files are in the first commit.
   # load = FALSE, otherwise R switches to the new, empty library mid-run
@@ -98,9 +101,10 @@ create_project <- function(path,
   invisible(path)
 }
 
-# LaTeX build files, ignored in both layouts
+# LaTeX and Quarto build files, ignored in both layouts
 latex_junk <- c("*.aux", "*.log", "*.out", "*.toc", "*.bbl", "*.bcf", "*.blg",
-                "*.run.xml", "*.fls", "*.fdb_latexmk", "*.synctex.gz")
+                "*.run.xml", "*.fls", "*.fdb_latexmk", "*.synctex.gz",
+                ".quarto/", "*_files/")
 
 research_layout <- function(author) {
   fs::dir_create(c("1_raw_data", "2_scripts", "3_derived_data",
@@ -154,12 +158,12 @@ package_layout <- function() {
   usethis::use_git_ignore("paper/*.pdf")
 }
 
-write_readme <- function(type, name, repo_url) {
+write_readme <- function(type, name, repo_url, format) {
   body <- if (type == "research") {
     c("## reproduce", "",
       "1. `renv::restore()`",
       "2. run the scripts in `2_scripts/` in numeric order",
-      "3. compile `5_docs/main.tex`")
+      if (format == "quarto") "3. render `5_docs/main.qmd`" else "3. compile `5_docs/main.tex` (with biber)")
   } else {
     c("## install", "",
       "```r",

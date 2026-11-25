@@ -1,25 +1,4 @@
 # create a reproducible project: social science research or R package
-
-# ============================================================================
-# create_project_claude.R  --  proposed version of create_project.R (by Claude)
-#
-# WHAT CHANGED (search "CLAUDE:" to jump to each one)
-#   1. format defaults to "quarto" (was "latex"), so every new project gets
-#      apa.csl + the automatic word count without asking. see create_paper_claude.R
-#   2. bug fix: create_paper() was called with unnamed arguments
-#      (title, author, email in that order). your local create_paper() now has
-#      a `subtitle` argument between title and author, so by position your
-#      NAME went into the subtitle and your EMAIL into the author. every
-#      argument is now passed by name (name = value), which can't shift.
-#   3. the "once per computer" step is automatic: if RENV_PATHS_LIBRARY_ROOT
-#      is missing, create_project() writes it to your ~/.Renviron itself
-#      (before: it stopped with an error and you had to do it by hand).
-#      that's what makes the "one line in the console" README possible.
-#
-# HOW TO ADOPT: compare with create_project.R, delete create_project.R and
-# rename this file to create_project.R, then devtools::document().
-# ============================================================================
-
 #' create a reproducible R project
 #'
 #' * `type = "research"`: numbered data pipeline (`1_raw_data/` ... `6_archives/`),
@@ -59,8 +38,16 @@ create_project <- function(path,
 
   # missing(x) is TRUE when you did not give x in the call: only those are asked, what you typed is never asked again
   if (ask && missing(path)) {
-    path <- ask_text("project folder (e.g. C:/Users/you/:")
+    how <- ask_choice("how do you want to choose the project folder?",
+                      c("select with mouse", "type the path"))
+
+    path <- if (how == "type the path") {
+      ask_text("project folder (e.g. C:/Users/you/project)")
+    } else {
+        file.path(ask_folder_dialog(), ask_text("name of the project folder:"))
+      }
   }
+
   # HERE: utils::menu() prints a numbered list and returns the number you type
   if (ask && missing(type)) {
     type <- ask_choice("type of project?", c("research", "package"))
@@ -231,6 +218,19 @@ ask_text <- function(question) {
   answer <- trimws(gsub("^[\"']|[\"']$", "", trimws(readline(paste(question, "")))))
   if (answer == "") stop("no folder given", call. = FALSE)
   chartr("\\", "/", answer)
+}
+
+# ask_folder_dialog
+ask_folder_dialog <- function(caption = "where should the project folder go?") {
+  dir <- if (requireNamespace("rstudioapi", quietly = TRUE) && rstudioapi::isAvailable()) {
+    rstudioapi::selectDirectory(caption = caption)
+  } else {
+    tcltk::tk_choose.dir(caption = caption)
+  }
+
+  if (is.null(dir) || is.na(dir) || dir =="") stop ("cancelled", call. = TRUE)
+  chartr("\\", "/", dir)
+
 }
 
 # the old "once per computer" README step, done by code.

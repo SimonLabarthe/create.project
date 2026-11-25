@@ -8,11 +8,12 @@ create_project(
   path,
   type = c("research", "package"),
   title = "[Insert Title]",
-  author = "Simon Labarthe",
-  email = "simon.labarthe@outlook.com",
-  github_user = "SimonLabarthe",
+  author = "[Your Name]",
+  email = "gmail@chucknorris.com",
+  github_user = "You",
   publish_github = FALSE,
-  format = c("latex", "quarto")
+  format = c("quarto", "latex"),
+  ask = interactive()
 )
 }
 \arguments{
@@ -29,7 +30,8 @@ create_project(
 \item{publish_github}{TRUE creates a private GitHub repo and pushes
 (needs a token once: \code{usethis::create_github_token()})}
 
-\item{format}{the paper: "latex" (main.tex) or "quarto" (main.qmd), see \code{\link[=create_paper]{create_paper()}}}
+\item{format}{the paper: "quarto" (main.qmd, default: APA references
+via apa.csl + automatic word count) or "latex" (main.tex), see \code{\link[=create_paper]{create_paper()}}}
 }
 \value{
 the project path, invisibly
@@ -48,7 +50,8 @@ commit on \code{main}. every step skips what already exists.
 }
 \examples{
 \dontrun{
-create_project("~/OneDrive/university/26b/seminar/my_paper", title = "Why does X affect Y?")
-create_project("~/OneDrive/personal/project/coolfun", type = "package")
+create_project("~path", title = "Why does X affect Y?")
+create_project("~path", type = "package")
+create_project("~path", format = "latex")
 }
 }

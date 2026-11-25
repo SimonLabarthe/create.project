@@ -7,8 +7,9 @@
 create_paper(
   dir = "5_docs",
   type = c("research", "software"),
-  title = "[Insert Title]",
-  author = "Simon Labarthe",
+  title = "Your Title",
+  subtitle = "Your Subtitle",
+  author = "Your Name",
   email = NULL,
   affiliation = NULL,
   student_id = NULL,
@@ -17,7 +18,7 @@ create_paper(
   figures_dir = "../4_outputs/figures/",
   repo_url = "[link]",
   package = "[package]",
-  format = c("latex", "quarto")
+  format = c("quarto", "latex")
 )
 }
 \arguments{
@@ -49,7 +50,7 @@ of any style on \url{https://www.zotero.org/styles}, e.g. "chicago-author-date"
 
 \item{package}{software only: package name used in the text and code examples}
 
-\item{format}{"latex" or "quarto"}
+\item{format}{"quarto" (default: apa.csl + word count) or "latex"}
 }
 \value{
 the path of main.tex or main.qmd, invisibly
@@ -80,7 +81,7 @@ need, comparison with existing tools, design, usage, validation).
 \examples{
 \dontrun{
 create_paper("5_docs", title = "Why does X affect Y?")
-create_paper("5_docs", format = "quarto")
+create_paper("5_docs", format = "latex")   # LaTeX instead of the Quarto default
 create_paper("paper", type = "software", package = "package")
 }
 }

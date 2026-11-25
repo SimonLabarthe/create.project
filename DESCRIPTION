@@ -17,6 +17,8 @@ Imports:
     utils
 Suggests:
     quarto,
+    rstudioapi,
+    tcltk,
     testthat (>= 3.0.0),
     tinytex,
     withr

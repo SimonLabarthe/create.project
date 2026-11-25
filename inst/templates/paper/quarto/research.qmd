@@ -4,11 +4,13 @@
 # render: the Render button in RStudio (or quarto render main.qmd)
 # guidance [...] that contains an @reference starts with \[ : without the
 # backslash, Markdown would read the whole bracket as a citation
-title: '**{{title}}**'
-thanks: 'Word count: [X,XXX].'
+# \todo{...} prints in red in the PDF: search "todo" before submitting
+title: '{{title}}'
+subtitle: '{{subtitle}}'
 author: '{{author}}'
-date: '{{date}}'
-date-format: 'MMMM YYYY'   # Quarto rewrites the dates it can read (October 2026 -> 2026-10-01)
+thanks: 'Word count: {{< words-body >}} words (excluding abstract, notes and references).'
+date: {{date}}
+date-format: 'YYYY-MM-DD'
 abstract: |
   <!-- 5-7% of total word count (~150-210 words for a 3,000-word paper) -->
   [1-2 sentences: Empirical puzzle/hook]
@@ -19,28 +21,48 @@ abstract: |
   [1 sentence: Contribution/implications]
 
   `\medskip\noindent`{=latex} **Keywords:** [Keyword 1], [Keyword 2], [Keyword 3], [Keyword 4], [Keyword 5]
+
+  {{< pagebreak >}}
+lang: en-GB
 bibliography: references.bib
 csl: {{csl}}
+link-citations: true
 format:
-  pdf:
+  wordcount-pdf:   # pdf + the word count printed under the title (extension in _extensions/)
     documentclass: article
     papersize: a4
     fontsize: 11pt
     geometry: [top=3cm, bottom=3cm, left=3cm, right=3cm]
     pdf-engine: pdflatex
     number-sections: true
+    toc: true
+    toc-depth: 2
     colorlinks: true
     linkcolor: 'blue!50!black'
     citecolor: 'blue!50!black'
     urlcolor: 'red!60!black'
     fig-pos: htbp
     include-in-header:
-      - header.tex{{author_header}}
+      - header.tex
+      - text: |
+          \newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}   % delete before submitting
+          \usetikzlibrary{fit}
+
 execute:
   echo: false      # show results, not code
   warning: false
   message: false
+editor:
+  markdown:
+    wrap: sentence # visual editor: one sentence per line (cleaner diffs)
 ---
+
+```{r}
+#| output: asis
+# table of contents on its own page: delete this chunk if you do not want one
+if (knitr::is_latex_output()) {
+  cat("\\tableofcontents\n\\newpage\n")}
+```
 
 ```{r}
 #| label: setup
@@ -58,8 +80,6 @@ models <- list(
   "(3)" = lm(mass ~ height + human + masculine, data = sw)
 )
 ```
-
-{{< pagebreak >}}
 
 <!-- ===================================================================== -->
 # Introduction {#sec-intro}
@@ -266,7 +286,7 @@ modelsummary::modelsummary(
 <!-- layout-ncol=2: two figures per row, each with its own (a), (b) caption -->
 ::: {#fig-grid layout-ncol=2}
 
-![The duel]({{figures_dir}}example_duel.jpg){#fig-duel}
+![The duel]({{figures_dir}}example_duel.pdf){#fig-duel}
 
 ![Species]({{figures_dir}}example_species.pdf){#fig-species}
 

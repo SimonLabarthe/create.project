@@ -12,7 +12,7 @@ create_paper(
   email = NULL,
   affiliation = NULL,
   student_id = NULL,
-  date = format(Sys.Date(), "\%B \%Y"),
+  date = NULL,
   bib_style = "apa",
   figures_dir = "../4_outputs/figures/",
   repo_url = "[link]",
@@ -35,7 +35,8 @@ create_paper(
 
 \item{student_id}{student id, or NULL}
 
-\item{date}{date printed under the title}
+\item{date}{date printed under the title. NULL: the current month
+(latex), or the day the paper is rendered (quarto)}
 
 \item{bib_style}{reference style. latex: a biblatex style, e.g. "apa",
 "authoryear", "chicago-authordate". quarto: "apa" (shipped), or the name
@@ -66,8 +67,10 @@ compile it with \code{\link[=compile_paper]{compile_paper()}}, not RStudio's "Co
 (the button runs BibTeX, so the references stay empty).
 \item \code{format = "quarto"}: \code{main.qmd} (\verb{inst/templates/paper/quarto/}), text in
 Markdown, tables and numbers computed by R when the paper is rendered.
-comes with \code{header.tex} (same look as the LaTeX paper) and \code{apa.csl}
-(reference style). render it with the Render button in RStudio.
+comes with \code{header.tex} (same look as the LaTeX paper), \code{apa.csl}
+(reference style) and the \code{wordcount} extension in \verb{_extensions/}
+(prints the word count under the title). render it with the Render
+button in RStudio.
 \item \code{type = "research"}: empirical social science (theory, hypotheses,
 research design, results, robustness).
 \item \code{type = "software"}: a paper introducing an R package (statement of

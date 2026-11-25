@@ -1,0 +1,768 @@
+---
+title: "create project from r to github"
+author: "Simon Labarthe"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  comment = "##"
+)
+```
+
+# 0 mental model
+
+- **a place for raw data** that never change
+- **a place for scripts** that transform data in order
+- **a place for derived data** that you can regenerate at any time
+- **a place for outputs** (figures, tables, PDFs)
+- **a place for the paper** itself, which consumes the outputs
+- **a place for the package** if you write reusable functions
+- **metadata files**: `.Rproj`, `.Rbuildignore`, `.gitignore`, `renv.lock`, `DESCRIPTION` that tell R, Git, and the build system how to behave
+
+three principles behind everything:
+
+- **convention over configuration** — R, RStudio and CRAN expect specific names
+- **generated, not hand-written** — docs, NAMESPACE, STRUCTURE.md, tables are derived
+- **separate by audience** — you, collaborators, users, reviewers
+
+# how to use (zero to project in a few minutes)
+
+1. create an empty folder, open RStudio, `File > New Project > Existing Directory` (this creates the `.Rproj`)
+2. copy this file into the folder
+3. edit **only** section 1.1 (parameters)
+4. `Run All` (Ctrl+Alt+R). chunks marked `eval = FALSE` are recipes you run by hand
+5. restart R once at the end (renv), install your packages, then `renv::snapshot()`
+
+every flag in 1.1 is checked *inside* the chunks, and every chunk skips what already exists, so re-running is safe.
+
+# once per computer: keep package libraries out of OneDrive
+by default renv installs packages in `renv/library/` inside the project. in a synced folder (OneDrive, Dropbox...) that means thousands of small, machine-specific files: the drive fills up, sync gets stuck, and the two computers fight over the same binaries.
+
+the fix is one Windows user variable, `RENV_PATHS_LIBRARY_ROOT`. renv then keeps each project's library in `AppData/Local/renv/library/` (local, never synced) and the project only carries `renv.lock`. run this chunk by hand **once on each computer**, then close and reopen RStudio:
+```{r renv-library-root, eval = FALSE}
+lib_root <- file.path(Sys.getenv("LOCALAPPDATA"), "renv", "library")
+system2("setx", c("RENV_PATHS_LIBRARY_ROOT", shQuote(lib_root, type = "cmd")))
+```
+
+check after restarting RStudio (must print the AppData path, not ""):
+```{r renv-library-root-check, eval = FALSE}
+Sys.getenv("RENV_PATHS_LIBRARY_ROOT")
+```
+
+# 1 bootstrap chunks
+## 1.1 parameters
+```{r params}
+#---project identity----------------------------------------------------
+# folder / .Rproj name is detected automatically
+project_name <- tools::file_path_sans_ext(list.files(pattern = "\\.Rproj$")[1])
+package_name <- gsub("[^A-Za-z0-9.]", ".", project_name)  # valid R package name (DESCRIPTION)
+author_first <- "Simon"
+author_last  <- "Labarthe"
+author_name  <- paste(author_first, author_last)
+author_email <- "simon.labarthe@outlook.com"
+github_user  <- "SimonLabarthe"
+paper_title  <- "[Insert Title]"                          # goes into 5_docs/main.tex
+
+#---what to bootstrap---------------------------------------------------
+use_renv       <- TRUE             # pin package versions
+use_package    <- TRUE             # if FALSE, R/ is just a folder of scripts
+use_git        <- TRUE             # git init + first commit
+publish_github <- FALSE            # TRUE creates the GitHub repo and pushes (needs a token)
+github_private <- TRUE             # a public repo exposes your code: private by default
+data_splits    <- character(0)     # e.g. c("pilot", "train") mirrors every stage; empty = flat pipeline
+overwrite_tex  <- FALSE            # TRUE regenerates 5_docs/main.tex (erases your edits!)
+```
+
+## 1.2 pre-flight check
+```{r preflight}
+pkgs <- c("usethis", "fs", "gert", "gh", "renv", "roxygen2")
+missing_pkgs <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]
+if (length(missing_pkgs)) install.packages(missing_pkgs)
+
+stopifnot(
+  "no .Rproj found: File > New Project > Existing Directory first" = !is.na(project_name),
+  "run this file from the project root"                           = file.exists(paste0(project_name, ".Rproj")),
+  "RENV_PATHS_LIBRARY_ROOT is not set: run the 'once per computer' chunk first" =
+    !use_renv || nzchar(Sys.getenv("RENV_PATHS_LIBRARY_ROOT"))
+)
+message("pre-flight ok. working in: ", getwd())
+```
+
+if you forgot to open the .Rproj, everything would be written in the wrong place. this check costs one second and prevents an afternoon of confusion.
+
+## 1.3 create the package skeleton
+```{r package}
+if (use_package) {
+  # DESCRIPTION -----------------------------------------------------------
+  if (!file.exists("DESCRIPTION")) {
+    usethis::use_description(
+      fields = list(
+        Package     = package_name,
+        Title       = "one line, title case, no trailing period",
+        Version     = "0.0.1",
+        `Authors@R` = utils::person(
+          given  = author_first,
+          family = author_last,
+          email  = author_email,
+          role   = c("aut", "cre")
+        ),
+        Description = paste0(
+          "one paragraph, wrapped at 80 characters, ending with a period. ",
+          "say what the package does, not how."
+        ),
+        License = "MIT + file LICENSE"
+      ),
+      check_name = FALSE
+    )
+    message("DESCRIPTION created")
+  } else {
+    message("DESCRIPTION already present, skipping")
+  }
+
+  # NAMESPACE + roxygen ---------------------------------------------------
+  if (!file.exists("NAMESPACE")) usethis::use_namespace()
+  if (!"Roxygen" %in% colnames(read.dcf("DESCRIPTION"))) usethis::use_roxygen_md()
+}
+```
+
+## 1.4 project folders
+```{r folders}
+dirs <- c("1_raw_data", "2_scripts", "3_derived_data", "4_outputs",
+          "5_docs", "6_archives", "R")
+
+if (length(data_splits) == 0) {
+  dirs <- c(dirs,
+    "3_derived_data/checkpoints",
+    file.path("4_outputs", c("figures", "tables", "models"))
+  )
+} else {
+  # every stage mirrors the same splits (pilot/, train/, ...)
+  dirs <- c(dirs,
+    file.path("1_raw_data", data_splits),
+    file.path("2_scripts", data_splits),
+    file.path("3_derived_data", data_splits, "checkpoints"),
+    file.path("4_outputs", rep(data_splits, each = 3), c("figures", "tables", "models"))
+  )
+}
+
+fs::dir_create(dirs)
+```
+
+## 1.4.1 template scripts in `2_scripts/`
+```{r scripts}
+meta <- function(title) {
+  paste0(
+    "# meta --------------------------------------------------------------------\n",
+    "#' @title   ", title, "\n",
+    "#' @author  ", author_name, "\n",
+    "#' @date    ", Sys.Date(), "\n",
+    "#' @objective <describe the objective>\n",
+    "#--------------------------------------------------------------------------\n"
+  )
+}
+
+# edit freely: numbering = execution order
+scripts <- list(
+  "01_extract_raw_data.R"     = "extract raw data into 1_raw_data/",
+  "02_clean_and_merge_data.R" = "clean and merge into 3_derived_data/",
+  "03_descriptive_analysis.R" = "descriptive tables",
+  "04_regression_analysis.R"  = "estimation, models saved in 4_outputs/models/",
+  "05_figures_and_tables.R"   = "figures and tables for the paper"
+)
+
+script_dirs <- if (length(data_splits)) file.path("2_scripts", data_splits) else "2_scripts"
+
+for (dir in script_dirs) {
+  for (nm in names(scripts)) {
+    path <- file.path(dir, nm)
+    if (!file.exists(path)) writeLines(meta(scripts[[nm]]), path)
+  }
+}
+```
+
+## 1.5 `R/utils.R` (the package engine)
+```{r}
+utils_path <- file.path("R", "utils.R")
+
+if (!file.exists(utils_path)) {
+  writeLines(
+    c(
+      "# exported helpers",
+      "",
+      "#' compute classification metrics",
+      "#'",
+      "#' @param y      true labels (0/1)",
+      "#' @param y_hat  predicted labels (0/1)",
+      "#' @return a one-row data.frame of metrics",
+      "#' @export",
+      "do_metrics <- function(y, y_hat) {",
+      "  y     <- as.integer(y)",
+      "  y_hat <- as.integer(y_hat)",
+      "  keep  <- !is.na(y) & !is.na(y_hat)",
+      "  y     <- y[keep]",
+      "  y_hat <- y_hat[keep]",
+      "  tp <- sum(y == 1 & y_hat == 1)",
+      "  fp <- sum(y == 0 & y_hat == 1)",
+      "  fn <- sum(y == 1 & y_hat == 0)",
+      "  tn <- sum(y == 0 & y_hat == 0)",
+      "  precision <- if (tp + fp == 0) NA_real_ else tp / (tp + fp)",
+      "  recall    <- if (tp + fn == 0) NA_real_ else tp / (tp + fn)",
+      "  f1        <- if (is.na(precision) || is.na(recall) ||",
+      "                   (precision + recall) == 0) 0 else",
+      "                2 * precision * recall / (precision + recall)",
+      "  accuracy  <- (tp + tn) / length(y)",
+      "  data.frame(n = length(y), tp, fp, tn, fn,",
+      "             precision, recall, f1, accuracy)",
+      "}"
+    ),
+    utils_path
+  )
+}
+```
+
+why one file, not many: start simple. when utils.R grows past ~200 lines, split it into metrics.R, plots.R, api.R. R will source them all in alphabetical order.
+
+why @export: the roxygen tag tells roxygen2 to add export(do_metrics) to NAMESPACE. run roxygen2::roxygenise() (or devtools::document()) after editing, and the docs and NAMESPACE regenerate automatically.
+
+## 1.6 docs
+### 1.6.1 create main.tex
+the template is embedded here, so this file stays self-contained (no `create_main_tex.R` needed). placeholders `[Author Name]`, `[email]`, `[Month Year]` and the title are filled from section 1.1.
+
+watch out in the template: a `\\` followed by `[...]` is read by LaTeX as a length (`\\[2pt]`), so any placeholder starting a table row is wrapped as `{[...]}`.
+
+```{r main-tex}
+tex_path <- file.path("5_docs", "main.tex")
+
+tex <- r"---(\documentclass[12pt,a4paper]{article}
+
+% ---- Packages -------------------------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amsfonts,amssymb,amsxtra}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{setspace}
+\usepackage{multicol}
+\usepackage{threeparttable}
+\usepackage{subcaption}
+\usepackage{caption}
+\usepackage{pdflscape}
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta}
+\usepackage{csquotes}  % recommended by biblatex
+\usepackage[backend=biber, style=apa, natbib=true]{biblatex}
+\addbibresource{references.bib}
+\usepackage{hyperref}  % keep near the end
+\hypersetup{urlbordercolor=red}
+
+% Figures/tables are produced by the R scripts: point to them, do not copy
+\graphicspath{{../4_outputs/figures/}}
+
+\onehalfspacing
+
+%================================================================%
+
+\title{\textbf{[Insert Title: Should Be Concise, Informative, and Capture the Core Puzzle]}\footnote{[Word count: ~X,XXX]}}
+\author{[Author Name] \\
+\url{[email]} \\
+{[Student ID]}}
+\date{[Month Year]}
+
+\begin{document}
+
+\maketitle
+
+\begin{center}
+\subsection*{Abstract}
+\end{center}
+
+% 5-7% of total word count (~150-210 words for 3,000-word paper)
+[1-2 sentences: Empirical puzzle/hook]
+[1-2 sentences: Motivation/importance]
+[1 sentence: Research question]
+[1-2 sentences: Research design/approach]
+[1-2 sentences: Main findings]
+[1 sentence: Contribution/implications]
+
+\paragraph{Keywords.} [Keyword 1], [Keyword 2], [Keyword 3], [Keyword 4], [Keyword 5]
+
+\section{Introduction} % 8-10% of total (~240-300 words)
+
+\textbf{[Opening puzzle / hook]} % ~20% of intro
+[A striking empirical puzzle, anomaly, or paradox. One powerful observation. Avoid generic openings.]
+
+\textbf{[Motivation \& 'so what?']} % ~20% of intro
+[(1) Why does this matter for the real world? (2) Why does it matter for political science theory? Address head-on in 2-3 sentences.]
+
+\textbf{[Research question]} % ~10% of intro
+[One single, clear, falsifiable question. Prefer: 'Under what conditions / To what extent / Why does X affect Y in context Z?']
+
+\textbf{[Literature gap - brief]} % ~15% of intro
+[In 3-4 sentences: what do we know (3-5 key works), and what's missing? End with: 'This article addresses this gap by...']
+
+\textbf{[Main argument / thesis]} % ~10% of intro
+[One to two sentences stating your answer to the RQ. Be direct and specific. No hedging verbs like 'suggest' or 'explore'.]
+
+\textbf{[Contribution statement]} % ~15% of intro
+[What this article adds: new case, mechanism, test, dataset, or methodological advance. Use: 'I contribute to the literature on X by Y.']
+
+\textbf{[Roadmap]} % ~10% of intro
+[One sentence per section: 'Section 2 reviews... Section 3 develops... Section 4 presents... Section 5 reports... Section 6 discusses...']
+
+\section{Literature Review} % 15-20% of total (~450-600 words)
+
+\subsection{Theoretical Foundations} % 25% of lit review
+[Place your article within a recognised theoretical tradition (rationalism, constructivism, institutionalism, etc.). Show intellectual lineage and explain why this tradition is the relevant starting point.]
+
+\subsection{First Debate: [Theme 1]} % 30% of lit review
+[Identify the first major strand. Synthesize, do NOT list papers one by one. State: central claim $\rightarrow$ key works (3-5 citations) $\rightarrow$ empirical scope $\rightarrow$ limitations.]
+
+\subsection{Second Debate: [Theme 2]} % 30% of lit review
+[Identify the second strand (or contrasting school). Same structure: central claim $\rightarrow$ key works $\rightarrow$ limitations. Make clear how it relates to or competes with Debate 1.]
+
+\subsection{The Gap and Transition to Theory} % 15% of lit review
+[Synthesize the state of the field into a single, precise gap statement. Use: (a) untested mechanism, (b) neglected context, (c) contradictory findings, (d) missing variable.]
+[Explicit bridge: 'The gap identified above calls for a theoretical account of [mechanism]. The following section provides such an account.']
+
+\section{Theoretical Framework} % 15-20% of total (~450-600 words)
+
+\subsection{Core Concepts and Definitions} % 15% of theory
+[Define your key theoretical concepts precisely. Operational definitions come later in Research Design.]
+
+\subsection{Causal Mechanism} % 35% of theory
+[Describe step-by-step how X causes Y. Use an explicit diagram. Be explicit about each link. Avoid vague language like 'X influences Y'; say how and why each step operates.]
+
+\begin{figure}[h]
+    \caption{[Title: DAG: Causal Pathways from X to Y]}
+    \label{fig:dag}
+    \centering
+    \footnotesize
+    \begin{tikzpicture}[node distance=1.8cm, box/.style={draw, rounded corners, align=center, minimum width=3.5cm, minimum height=1.2cm}]
+        \node[box] (X) at (0,0) {D: [Treatment]};
+        \node[box] (M1) at (5,3) {$M_1$: [Mechanism 1]};
+        \node[box] (M2) at (5,1) {$M_2$: [Mechanism 2]};
+        \node[box] (M3) at (5,-1) {$M_3$: [Mechanism 3]};
+        \node[box] (M4) at (5,-3) {$M_4$: [Mechanism 4]};
+        \node[box] (U) at (5,6) {U: [Pre-treatment\\characteristics]};
+        \node[box] (Y) at (10,0) {Y: [Outcome]};
+
+        \draw[->, thick] (X) -- node[above] {$+$} (M1);
+        \draw[->, thick] (X) -- node[above] {$+$} (M2);
+        \draw[->, thick] (X) -- node[above] {$+$} (M3);
+        \draw[->, thick] (X) -- node[above] {$+$} (M4);
+
+        \draw[->, thick] (M1) -- node[above] {$+$} (Y);
+        \draw[->, thick] (M2) -- node[above] {$+$} (Y);
+        \draw[->, thick] (M3) -- node[above] {$+$} (Y);
+        \draw[->, thick] (M4) -- node[above] {$-$} (Y);
+
+        \draw[->, dashed] (U) -- (X);
+        \draw[->, dashed] (U) -- (Y);
+    \end{tikzpicture}
+\end{figure}
+
+\subsection{Theoretical Predictions} % 35% of theory
+
+\textbf{Main Hypothesis (H1)}
+[One falsifiable, directional statement: 'As X increases, Y increases/decreases, holding Z constant.' Write in plain language AND as formal if-then statement.]
+
+\textbf{Alternative Hypothesis / Rival Explanation (H2)}
+[What would competing theories predict? State at least one rival hypothesis. Explain why your theory predicts a different outcome.]
+
+\textbf{Conditional Hypothesis (H3, if relevant)}
+[If your argument is conditioned on a third variable Z: 'The effect of X on Y is stronger when Z is high.']
+
+\subsection{Scope Conditions} % 15% of theory
+[Define the population of cases for which your theory holds. What are the necessary background conditions? Explicit scope conditions protect against over-generalization.]
+
+\subsection{Empirical Implications} % 15% of theory
+[State explicitly what observable implications follow from your theory. What should we observe in the data if H1 is true vs. if H2 is true? This bridges theory and research design.]
+
+\section{Research Design and Data} % 15-20% of total (~450-600 words)
+
+\subsection{Causal Identification Strategy} % 20% of design
+[Explain the core research design: OLS/logit, DiD, RDD, IV, matching, etc. Justify the choice. State the identifying assumption clearly and discuss why it is plausible in your context.]
+
+\subsection{Sample, Population, and Time Period} % 12% of design
+[Unit of analysis? N? Years? Justification for temporal/geographic scope? Selection concerns?]
+
+\subsection{Dependent Variable (Y)} % 12% of design
+[Operationalization? Source? Unit of measurement? Validity (does it capture the theoretical concept)? Name variable exactly as in analysis.]
+
+\subsection{Independent Variables (X)} % 12% of design
+[Same structure as Y. Is there endogeneity risk? How do you address it?]
+
+\subsection{Control Variables} % 12% of design
+[List each control with one-sentence theoretical justification. Avoid kitchen-sink controls: only include variables that theoretically confound the X--Y relationship.]
+
+\subsection{Descriptive Statistics} % 12% of design
+
+\begin{table}[!htbp] \centering \footnotesize
+  \caption{Descriptive Statistics}
+  \label{tab:descr}
+\begin{tabular}{@{\extracolsep{5pt}}lccccc}
+\hline
+Statistic & N & Mean & St. Dev. & Min & Max \\
+\hline
+{[Variable 1]} & [N] & [Mean] & [SD] & [Min] & [Max] \\
+{[Variable 2]} & [N] & [Mean] & [SD] & [Min] & [Max] \\
+{[Variable 3]} & [N] & [Mean] & [SD] & [Min] & [Max] \\
+\hline
+\end{tabular}
+\end{table}
+
+[Reference table explicitly. Note any unusual distributions or missingness.]
+
+\subsection{Model Specification} % 20% of design
+[Write out estimating equation. Explain choice of standard errors (clustered, robust, bootstrapped). If panel data: fixed effects or random effects and why.]
+
+\section{Results} % 15-20% of total (~450-600 words)
+
+\subsection{Main Results} % 40% of results
+[Present main regression table. Discuss substantive magnitude, not just statistical significance. Translate coefficient: 'A one-unit increase in X is associated with [effect size], which represents [% of mean / SD units / real-world benchmark].']
+
+\begin{table}[!htbp]
+\caption{Main Results}
+\label{tab:results}
+\centering
+\begin{tabular}{l c c c}
+\hline
+ & \textbf{(1)} & \textbf{(2)} & \textbf{(3)} \\
+\hline
+{[IV]} & [Coef] & [Coef] & [Coef] \\
+ & ([SE]) & ([SE]) & ([SE]) \\
+{[Controls]} & [Coef] & [Coef] & [Coef] \\
+ & ([SE]) & ([SE]) & ([SE]) \\
+\hline
+N & [N] & [N] & [N] \\
+$R^2$ & [$R^2$] & [$R^2$] & [$R^2$] \\
+\hline
+\multicolumn{4}{l}{\textit{Note:} [Explain model specifications]} \\
+\end{tabular}
+\end{table}
+
+[Include at least one figure (coefficient plot, marginal effects, or discontinuity plot) to visualize the main result.]
+
+\begin{figure}[h]
+    \caption{[Title: Visualization of Main Effects]}
+    \centering
+    \IfFileExists{../4_outputs/figures/figure_file.png}{\includegraphics[width=0.8\textwidth]{figure_file.png}}{\fbox{\parbox{0.8\textwidth}{\centering [Figure placeholder]}}}
+\end{figure}
+
+\subsection{Tests of Alternative Hypotheses} % 25% of results
+[Show that H2 (rival explanation) receives less empirical support than H1. This can be: separate regression including rival variable, placebo test, mechanism test, or subsample analysis.]
+
+\subsection{Robustness Checks} % 20% of results
+[Test main result under: (1) alternative operationalization of X or Y, (2) alternative model specification, (3) restricted sample, (4) alternative bandwidth/caliper. State briefly that results hold, or explain if they do not.]
+
+\subsection{Placebo and Falsification Tests} % 15% of results
+[Summary of placebo tests (e.g., fake cutoff points, pre-treatment outcomes). These strengthen causal claims and address identification concerns. Full results in appendix.]
+
+\section{Discussion and Conclusion} % 10-12% of total (~300-360 words)
+
+\subsection{Summary of Argument and Findings} % 20% of discussion
+[Briefly restate: (1) research question, (2) theoretical argument, (3) main empirical finding. 3-4 sentences. Introduce no new evidence.]
+
+\subsection{Interpretation of Findings} % 25% of discussion
+[What do results tell us about the theoretical mechanism? Do they support or challenge existing theories? What do null results (if any) mean? Be precise.]
+
+\subsection{Theoretical Implications} % 20% of discussion
+[What must we revise, nuance, or add to the existing literature? Name specific works your results corroborate or challenge. Be precise about what your contribution changes.]
+
+\subsection{Limitations} % 15% of discussion
+[Be honest: external validity, measurement limitations, remaining endogeneity threats, scope condition boundaries. Naming limitations is scholarly maturity, not weakness.]
+
+\subsection{Future Research Agenda} % 15% of discussion
+[What are the logical next steps? Name 2-3 specific open questions that follow from your findings. Situates your work as part of a research program.]
+
+\subsection{Closing Statement} % 5% of discussion
+[Return to the opening puzzle from the introduction and resolve it in light of your findings. One to two memorable sentences. Avoid cliches like 'More research is needed.']
+
+\newpage
+
+\printbibliography
+
+\newpage
+
+\appendix
+\section*{Appendices}
+
+\subsection*{Appendix A: Variable Definitions and Coding Rules}
+[Detailed definitions, sources, and coding rules for all variables]
+
+\subsection*{Appendix B: Institutional Background (if applicable)}
+[Contextual information about the case]
+
+\subsection*{Appendix C: Additional Figures and Tables}
+[Supplementary analyses, balance tests, bandwidth sensitivity, etc.]
+
+\subsection*{Appendix D: Data Availability and Replication Code}
+[Repository link and instructions]
+
+\end{document}
+)---"
+
+tex <- sub("[Insert Title: Should Be Concise, Informative, and Capture the Core Puzzle]",
+           paper_title, tex, fixed = TRUE)
+tex <- sub("[Author Name]", author_name,  tex, fixed = TRUE)
+tex <- sub("[email]",       author_email, tex, fixed = TRUE)
+tex <- sub("[Month Year]",  format(Sys.Date(), "%B %Y"), tex, fixed = TRUE)
+
+if (!file.exists(tex_path) || overwrite_tex) {
+  writeLines(tex, tex_path)
+  message("main.tex written")
+} else {
+  message("main.tex already present, skipping (overwrite_tex = FALSE)")
+}
+```
+
+### 1.6.2 create references.bib
+```{r bib}
+bib_path <- file.path("5_docs", "references.bib")
+if (!file.exists(bib_path)) writeLines("% references.bib", bib_path)
+```
+
+### 1.6.3 compile (run by hand)
+`-cd` matters: `references.bib` and the figures path are relative to `5_docs/`.
+```{r compile, eval = FALSE}
+tinytex::latexmk("5_docs/main.tex", engine = "pdflatex", bib_engine = "biber")
+```
+
+## 1.7 `renv`
+```{r renv}
+if (use_renv && !dir.exists("renv")) {
+  if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv")
+  renv::init(project = ".", bare = TRUE, restart = FALSE)
+}
+```
+
+`bare = TRUE` sets up the private library, `.Rprofile` and `renv/activate.R` without scanning for dependencies. `restart = FALSE` because a restart in the middle of a run would kill the next chunks: restart R yourself at the end, install your packages, then `renv::snapshot()` to write `renv.lock`.
+
+what to commit: renv.lock and .Rprofile. never commit renv/library/ — it's machine-specific and rebuilt from the lockfile via renv::restore().
+
+where the library lives: because of `RENV_PATHS_LIBRARY_ROOT` (see "once per computer"), packages go to `AppData/Local/renv/library/<project>-<hash>/`, not `renv/library/`. each computer builds its own copy from `renv.lock`, so after installing or updating packages always run `renv::snapshot()`: the lockfile is the only thing the other computer receives. check with `.libPaths()[1]`.
+
+
+
+## 1.8 `.gitignore` and `.Rbuildignore`
+```{r ignore}
+usethis::use_git_ignore(c(
+  ".Rproj.user", ".Rhistory", ".RData", ".Ruserdata",
+  ".Renviron",
+  "1_raw_data/", "3_derived_data/", "4_outputs/",
+  "*.pdf", "*.aux", "*.log", "*.out",
+  "*.bbl", "*.bcf", "*.blg", "*.run.xml", "*.toc", "*.fls", "*.fdb_latexmk"
+))
+
+if (use_package) {
+  usethis::use_build_ignore(c(
+    "^.*\\.Rproj$", "^\\.Renviron$", "^\\.Rprofile$",
+    "^1_raw_data$", "^2_scripts$", "^3_derived_data$",
+    "^4_outputs$", "^5_docs$", "^6_archives$",
+    "^README\\.md$", "^LICENSE\\.md$", "^STRUCTURE\\.md$",
+    "^create_project\\.Rmd$", "^create_structure\\.R$",
+    "^renv$", "^renv\\.lock$"
+  ), escape = FALSE)
+}
+```
+
+why .Renviron in .gitignore: it holds API keys. leaking a key to a public repo is the single most common GitHub mistake in R projects.
+
+why `escape = FALSE`: `use_build_ignore()` escapes its input as literal file names by default. these entries are already regular expressions, so without it they would match nothing.
+
+why `renv/` is **not** ignored here: renv writes its own `renv/.gitignore` (library, local, staging). `renv/activate.R` and `renv/settings.json` must stay tracked, otherwise `.Rprofile` fails on a fresh clone.
+
+## secrets in `.Renviron`
+```{r renviron, eval = FALSE}
+usethis::edit_r_environ(scope = "project")   # project-level file, already git-ignored
+```
+
+add your keys, one per line, no quotes:
+```
+TYPESAFE_API_KEY=xxxxxx
+```
+
+restart R after editing. check without printing the key:
+```{r renviron-check, eval = FALSE}
+nzchar(Sys.getenv("TYPESAFE_API_KEY"))
+```
+
+## license
+```{r license}
+if (use_package) usethis::use_mit_license(author_name)
+```
+
+this creates LICENSE and LICENSE.md and updates the License: field in DESCRIPTION. alternatives: usethis::use_gpl3_license() (copyleft), usethis::use_apache_license() (permissive with patent grant).
+
+
+## 1.9 `STRUCTURE.md` and `README.md`
+### 1.9.1 create_structure.R
+```{r structure-script}
+writeLines(
+  c(
+    "# create_structure.R",
+    "# regenerate STRUCTURE.md from the current folder layout",
+    "tree <- utils::capture.output(",
+    "  fs::dir_tree('.', recurse = 3, invert = TRUE,",
+    "               regexp = 'renv/library|\\\\.Rproj\\\\.user|\\\\.git|\\\\.Rhistory|\\\\.RData')",
+    ")",
+    "writeLines(",
+    "  c('# project structure', '', '<!-- auto-generated by create_structure.R -->', '',",
+    "    '```', tree, '```'),",
+    "  'STRUCTURE.md'",
+    ")",
+    "message('STRUCTURE.md regenerated.')"
+  ),
+  "create_structure.R"
+)
+```
+
+### 1.9.2 README.md
+```{r readme}
+if (!file.exists("README.md")) {
+  writeLines(
+    c(paste0("# ", project_name), "",
+      "folder layout: see `STRUCTURE.md`.", "",
+      "## reproduce", "",
+      "1. `renv::restore()`",
+      "2. run the scripts in `2_scripts/` in numeric order",
+      "3. compile `5_docs/main.tex`"),
+    "README.md"
+  )
+}
+```
+
+### 1.9.3 update structure (keep this one last)
+```{r structure-run}
+source("create_structure.R")
+```
+
+# 2 publish
+## 2.1 git init and first commit
+```{r git-init}
+if (use_git) {
+  if (!dir.exists(".git")) gert::git_init(".")
+  gert::git_config_set("user.name",  author_name)    # local to this repo
+  gert::git_config_set("user.email", author_email)
+
+  gert::git_add(".")
+  print(gert::git_status())      # inspect: are the files you expect staged?
+
+  if (nrow(gert::git_status(staged = TRUE)) > 0) {
+    gert::git_commit("chore: initial project scaffold")
+  }
+
+  # same branch name locally and on GitHub
+  if (identical(gert::git_branch(), "master")) gert::git_branch_move("master", "main")
+}
+```
+
+why status() between add() and commit(): it tells you exactly what Git sees. if it is empty, your add() found nothing to stage, usually because files are ignored or already committed.
+
+## 2.2 create the GitHub repo and push
+needs a token once: `usethis::create_github_token()`, then `gitcreds::gitcreds_set()`.
+```{r github}
+if (use_git && publish_github) {
+  gh::gh(
+    "POST /user/repos",
+    name        = project_name,
+    private     = github_private,
+    auto_init   = FALSE,
+    description = "reproducible pipeline scaffold"
+  )
+
+  remote_url <- sprintf("https://github.com/%s/%s.git", github_user, project_name)
+  if (!"origin" %in% gert::git_remote_list()$name) gert::git_remote_add(remote_url, name = "origin")
+  gert::git_push(remote = "origin", set_upstream = TRUE)
+}
+```
+
+## 2.3 update (run by hand)
+```{r update, eval = FALSE}
+msg <- "feat: describe what changed"
+
+gert::git_add(".")
+st <- gert::git_status(staged = TRUE)      # what is about to be committed?
+
+if (nrow(st) == 0) {
+  message("nothing staged: no changes since last commit")
+} else {
+  print(st)
+  gert::git_commit(msg)
+  gert::git_push()
+}
+```
+
+# 3 other helpers
+one-off recipes from past cleanups. **copy one block at a time, never run the chunk as a whole.**
+```{r helpers, eval = FALSE}
+# untrack an committed file
+gert::git_rm(list.files("6_archives", recursive = TRUE, full.names = TRUE))
+
+gert::git_rm(".Rproj")
+gert::git_rm("create_project.Rmd")
+
+# change git branche
+system("git config --global init.defaultBranch main")
+
+# make main the default branch on GitHub, then delete master there
+gh::gh(
+  "PATCH /repos/{owner}/{repo}",
+  owner          = "SimonLabarthe",
+  repo           = project_name,
+  default_branch = "main"
+)
+
+repo_info <- gh::gh(
+  "GET /repos/{owner}/{repo}",
+  owner = "SimonLabarthe",
+  repo  = project_name
+)
+repo_info$default_branch
+# should print "main"
+
+gh::gh(
+  "DELETE /repos/{owner}/{repo}/git/refs/heads/master",
+  owner = "SimonLabarthe",
+  repo  = project_name
+)
+
+branches <- gh::gh(
+  "GET /repos/{owner}/{repo}/branches",
+  owner = "SimonLabarthe",
+  repo  = project_name
+)
+purrr::map_chr(branches, "name")
+# should print: "main"
+
+system("git fetch --prune")
+
+
+# delete a file
+# 1. untrack
+gert::git_rm("create_structure.R") # your file here
+
+# 2. stage everything (including the deletion)
+gert::git_add(".")
+
+# 3. verify what's about to be committed
+print(gert::git_status())
+# you should see 6_archives/... marked as "deleted"
+
+# 4. commit
+gert::git_commit("chore: untrack renv.lock") # and here
+
+# 5. push — MUST complete successfully
+gert::git_push(remote = "origin", refspec = "refs/heads/main")
+```
+
+

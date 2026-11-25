@@ -43,22 +43,28 @@ test_that("quarto papers get main.qmd, the LaTeX header and the reference style"
   expect_true(any(grepl("{{< pagebreak >}}", qmd, fixed = TRUE))) # Quarto shortcodes survive
   expect_true("title: '**X & Y: 50% of \\*the\\* story**'" %in% qmd)
   expect_true("csl: apa.csl" %in% qmd)
+  expect_true("date: today" %in% qmd)
+  expect_true(any(grepl("{{< words-body >}}", qmd, fixed = TRUE)))  # word count under the title
   expect_true(all(file.exists(file.path(dir, c("header.tex", "apa.csl", "references.bib")))))
+  expect_true(file.exists(file.path(dir, "_extensions", "andrewheiss", "wordcount", "_extension.yml")))
   expect_false(file.exists(file.path(dir, "main.tex")))
 })
 
-test_that("quarto: email and affiliation go in a LaTeX author block", {
+test_that("quarto: email and affiliation go in a footnote on the author's name", {
   dir <- withr::local_tempdir()
   create_paper(dir, author = "O'Brien", format = "quarto")
   qmd <- readLines(file.path(dir, "main.qmd"))
   expect_true("author: 'O''Brien'" %in% qmd)                    # quote doubled for YAML
-  expect_false(any(grepl("AtBeginDocument", qmd)))              # name only: no block
+  expect_false(any(grepl("\\thanks{", qmd, fixed = TRUE)))      # name only: no footnote
 
   dir <- withr::local_tempdir()
-  create_paper(dir, "software", email = "a@b.c", affiliation = "Uni", format = "quarto")
-  qmd <- paste(readLines(file.path(dir, "main.qmd")), collapse = "\n")
-  expect_match(qmd, "\\AtBeginDocument{\\author{Simon Labarthe \\\\ \\href{mailto:a@b.c}", fixed = TRUE)
-  expect_match(qmd, "Statement of Need", fixed = TRUE)
+  create_paper(dir, "software", email = "a@b.c", affiliation = "Uni", student_id = "123",
+               date = "May 2026", format = "quarto")
+  qmd <- readLines(file.path(dir, "main.qmd"))
+  expect_true(paste0("author: 'Simon Labarthe`\\thanks{Uni. \\\\\\indent \\href{mailto:a@b.c}{a@b.c}. ",
+                     "\\\\\\indent Student no.~123.}`{=latex}'") %in% qmd)
+  expect_true("date: 'May 2026'" %in% qmd)
+  expect_true(any(grepl("Statement of Need", qmd, fixed = TRUE)))
 })
 
 test_that("an existing main.qmd is never overwritten", {

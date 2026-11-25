@@ -4,10 +4,12 @@
 # render: the Render button in RStudio (or quarto render main.qmd)
 # guidance [...] that contains an @reference starts with \[ : without the
 # backslash, Markdown would read the whole bracket as a citation
+# \todo{...} prints in red in the PDF: search "todo" before submitting
 title: '**{{title}}**'
 author: '{{author}}'
-date: '{{date}}'
-date-format: 'MMMM YYYY'   # Quarto rewrites the dates it can read (October 2026 -> 2026-10-01)
+thanks: 'Word count: {{< words-body >}} words (excluding abstract, notes and references).'
+date: {{date}}
+date-format: 'MMMM YYYY'
 abstract: |
   <!-- 150-200 words. A reader should know after the abstract whether the package is for them. -->
   [1 sentence: the problem, in the user's words, not the package's]
@@ -17,10 +19,14 @@ abstract: |
   [1 sentence: availability: open source, license, where to get it]
 
   `\medskip\noindent`{=latex} **Keywords:** R, [domain], [Keyword 3], [Keyword 4], reproducibility
+
+  {{< pagebreak >}}
+lang: en-GB
 bibliography: references.bib
 csl: {{csl}}
+link-citations: true
 format:
-  pdf:
+  wordcount-pdf:   # pdf + the word count printed under the title (extension in _extensions/)
     documentclass: article
     papersize: a4
     fontsize: 11pt
@@ -33,14 +39,24 @@ format:
     urlcolor: 'red!60!black'
     fig-pos: htbp
     include-in-header:
-      - header.tex{{author_header}}
+      - header.tex
+      - text: |
+          \newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}   % delete before submitting
 execute:
   echo: false      # show results, not code
   warning: false
   message: false
+editor:
+  markdown:
+    wrap: sentence # visual editor: one sentence per line (cleaner diffs)
 ---
 
-{{< pagebreak >}}
+```{r}
+#| output: asis
+# table of contents on its own page: delete this chunk if you do not want one
+if (knitr::is_latex_output()) {
+  cat("\\tableofcontents\n\\newpage\n")}
+```
 
 <!-- ===================================================================== -->
 # Introduction {#sec-intro}
@@ -129,7 +145,7 @@ library({{package}})
 ## Minimal Example
 [The smallest call that shows the value of the package. The reader should be able to copy-paste it.]
 
-<!-- ```r shows code without running it; ```{r} with #| echo: true would run it and show the output -->
+<!-- the block below (r without braces) shows code without running it; {r} with #| echo: true would run it and show the output -->
 ```r
 # [what this example does]
 [function_1](["argument"])
@@ -140,7 +156,7 @@ library({{package}})
 ## Realistic Example
 \[A longer case that mirrors real use: options, combinations of functions, edge cases. Show the output (table, figure, file tree) as in @fig-output.]
 
-![[Output of the realistic example] Example: a figure drawn in R]({{figures_dir}}example_duel.jpg){#fig-output width=80%}
+![[Output of the realistic example] Example: a figure drawn in R]({{figures_dir}}example_duel.pdf){#fig-output width=80%}
 
 <!-- ===================================================================== -->
 # Quality and Validation {#sec-quality}

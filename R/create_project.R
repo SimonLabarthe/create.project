@@ -1,5 +1,25 @@
 # create a reproducible project: social science research or R package
 
+# ============================================================================
+# create_project_claude.R  --  proposed version of create_project.R (by Claude)
+#
+# WHAT CHANGED (search "CLAUDE:" to jump to each one)
+#   1. format defaults to "quarto" (was "latex"), so every new project gets
+#      apa.csl + the automatic word count without asking. see create_paper_claude.R
+#   2. bug fix: create_paper() was called with unnamed arguments
+#      (title, author, email in that order). your local create_paper() now has
+#      a `subtitle` argument between title and author, so by position your
+#      NAME went into the subtitle and your EMAIL into the author. every
+#      argument is now passed by name (name = value), which can't shift.
+#   3. the "once per computer" step is automatic: if RENV_PATHS_LIBRARY_ROOT
+#      is missing, create_project() writes it to your ~/.Renviron itself
+#      (before: it stopped with an error and you had to do it by hand).
+#      that's what makes the "one line in the console" README possible.
+#
+# HOW TO ADOPT: compare with create_project.R, delete create_project.R and
+# rename this file to create_project.R, then devtools::document().
+# ============================================================================
+
 #' create a reproducible R project
 #'
 #' * `type = "research"`: numbered data pipeline (`1_raw_data/` ... `6_archives/`),
@@ -17,13 +37,15 @@
 #' @param github_user    GitHub account, used for the repo URL
 #' @param publish_github TRUE creates a private GitHub repo and pushes
 #'   (needs a token once: `usethis::create_github_token()`)
-#' @param format         the paper: "latex" (main.tex) or "quarto" (main.qmd), see [create_paper()]
+#' @param format         the paper: "quarto" (main.qmd, default: APA references
+#'   via apa.csl + automatic word count) or "latex" (main.tex), see [create_paper()]
 #' @return the project path, invisibly
 #' @export
 #' @examples
 #' \dontrun{
 #' create_project("~/OneDrive/university/26b/seminar/my_paper", title = "Why does X affect Y?")
 #' create_project("~/OneDrive/personal/project/coolfun", type = "package")
+#' create_project("~/OneDrive/university/26b/seminar/my_paper", format = "latex")
 #' }
 create_project <- function(path,
                            type           = c("research", "package"),
@@ -32,12 +54,13 @@ create_project <- function(path,
                            email          = "simon.labarthe@outlook.com",
                            github_user    = "SimonLabarthe",
                            publish_github = FALSE,
-                           format         = c("latex", "quarto")) {
-  type   <- match.arg(type)
+                           # CLAUDE: 1. match.arg() below takes the FIRST value as the
+                           # default, so putting "quarto" first makes it the default
+                           format         = c("quarto", "latex")) {
+  type   <- match.arg(type)     # checks the value is one of the allowed ones
   format <- match.arg(format)
-  if (type == "research" && !nzchar(Sys.getenv("RENV_PATHS_LIBRARY_ROOT"))) {
-    stop("RENV_PATHS_LIBRARY_ROOT is not set: see 'once per computer' in the README")
-  }
+  # CLAUDE: 3. was: stop("RENV_PATHS_LIBRARY_ROOT is not set ..."). now fixed for you
+  if (type == "research") set_renv_library_root()
 
   name     <- basename(fs::path_abs(path))
   pkg      <- gsub("[^A-Za-z0-9.]", ".", name)   # valid R package name
@@ -71,11 +94,12 @@ create_project <- function(path,
   # 2. layout + paper
   if (type == "research") {
     research_layout(author)
-    create_paper("5_docs", "research", title, author, email,
+    # CLAUDE: 2. every argument named (was: create_paper("5_docs", "research", title, author, email, ...))
+    create_paper(dir = "5_docs", type = "research", title = title, author = author, email = email,
                  figures_dir = "../4_outputs/figures/", repo_url = repo_url, format = format)
   } else {
     package_layout()
-    create_paper("paper", "software", title, author, email,
+    create_paper(dir = "paper", type = "software", title = title, author = author, email = email,
                  figures_dir = "figures/", repo_url = repo_url, package = pkg, format = format)
   }
   write_readme(type, name, repo_url, format)
@@ -171,6 +195,34 @@ write_readme <- function(type, name, repo_url, format) {
       "```")
   }
   write_if_missing("README.md", c(paste("#", name), "", "[One line: what this is.]", "", body))
+}
+
+# CLAUDE: 3. the old "once per computer" README step, done by code.
+# renv keeps each project's packages in a library folder. by default that folder
+# is inside the project, i.e. in OneDrive: thousands of small files to sync.
+# the environment variable RENV_PATHS_LIBRARY_ROOT moves it to a local folder.
+# `renviron` is an argument only so the tests can point it at a temporary file
+set_renv_library_root <- function(renviron = path.expand("~/.Renviron")) {
+  # nzchar() = "is the string non-empty?": already set -> nothing to do
+  if (nzchar(Sys.getenv("RENV_PATHS_LIBRARY_ROOT"))) return(invisible())
+
+  # local (never synced) folder: AppData/Local on Windows, ~/.local/share elsewhere.
+  # .Platform$OS.type is "windows" or "unix"; chartr() turns \ into / for R
+  root <- if (.Platform$OS.type == "windows") {
+    chartr("\\", "/", file.path(Sys.getenv("LOCALAPPDATA"), "renv", "library"))
+  } else {
+    path.expand("~/.local/share/renv/library")
+  }
+
+  # ~/.Renviron is read by R at every start-up: the setting becomes permanent.
+  # (same file that usethis::edit_r_environ() opens)
+  cat(sprintf("RENV_PATHS_LIBRARY_ROOT=%s\n", root),
+      file = renviron, append = TRUE)   # append = TRUE: never erase what is already there
+
+  # .Renviron is only read at start-up, so set it for this session too
+  Sys.setenv(RENV_PATHS_LIBRARY_ROOT = root)
+  message("once per computer: RENV_PATHS_LIBRARY_ROOT=", root, " added to ", renviron)
+  invisible(root)
 }
 
 write_if_missing <- function(path, lines) {

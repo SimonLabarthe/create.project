@@ -1,5 +1,14 @@
 # create.project
 
+## install
+
+``` r
+install.packages("remotes")
+remotes::install_github("SimonLabarthe/create.project")
+```
+
+## use
+
 two functions to start any project, on any computer.
 
 ``` r
@@ -7,12 +16,6 @@ create_project(path, type = "research")   # data pipeline + renv + paper in 5_do
 create_project(path, type = "package")    # R package + paper in paper/
 create_paper(dir)                         # just the paper, in any project
 compile_paper(dir)                        # paper -> PDF, with its references
-```
-
-## install
-
-``` r
-remotes::install_github("SimonLabarthe/create.project")
 ```
 
 ## once per computer
@@ -60,6 +63,7 @@ create_project(path, format = "quarto")    # same, for a whole project
 | tables, numbers in the text | written by your scripts, or copied by hand | computed by R when the paper is rendered: never stale |
 | to PDF | `compile_paper("5_docs")` | Render button in RStudio |
 | look | `preamble.tex` | `header.tex`: same look as the LaTeX paper |
+| word count | typed by hand | printed under the title (`wordcount` extension, copied to `_extensions/`) |
 
 LaTeX papers: do not use RStudio's "Compile PDF" button. it runs BibTeX, the templates use biblatex + Biber, so the references stay empty. `compile_paper()` runs Biber (or `latexmk -pdf main.tex` in a terminal).
 
@@ -67,7 +71,7 @@ Quarto papers need `install.packages(c("dplyr", "modelsummary"))` for the exampl
 
 ### editing the templates
 
-LaTeX: `inst/templates/paper/preamble.tex` (packages, title, shared by both) + one body per type. Quarto: `inst/templates/paper/quarto/`: one `.qmd` per type, `header.tex`, `apa.csl`. `{{name}}` is filled by `create_paper()`, `[...]` is writing guidance. after editing, reinstall (`devtools::install()`).
+LaTeX: `inst/templates/paper/preamble.tex` (packages, title, shared by both) + one body per type. Quarto: `inst/templates/paper/quarto/`: one `.qmd` per type, `header.tex`, `apa.csl`, `_extensions/` (word count, MIT, by Andrew Heiss). `{{name}}` is filled by `create_paper()`, `[...]` is writing guidance. after editing, reinstall (`devtools::install()`).
 
 no blank boxes: the templates ship with example figures and tables made from `dplyr::starwars` (and a nice lightsaber duel). `create_paper()` copies the figures (`example_*.pdf`) into the figures folder; replace them with yours.
 

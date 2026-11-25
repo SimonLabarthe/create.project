@@ -79,7 +79,6 @@ create_paper <- function(dir         = "5_docs",
                          figures_dir = "../4_outputs/figures/",
                          repo_url    = "[link]",
                          package     = "[package]",
-                         # CLAUDE: 1. "quarto" listed first = the default (match.arg picks the first)
                          format      = c("quarto", "latex")) {
   type     <- match.arg(type)
   format   <- match.arg(format)
@@ -89,8 +88,6 @@ create_paper <- function(dir         = "5_docs",
   fs::dir_create(dir)
 
   if (!file.exists(paper)) {
-    # example figures (example_*.pdf, made by data-raw/example_figures.R),
-    # so the skeleton shows real figures: replace them with yours
     fig_dir <- file.path(dir, figures_dir)
     fs::dir_create(fig_dir)
     examples <- list.files(system.file("templates", "paper", "figures", package = "create.project"),
@@ -106,7 +103,7 @@ create_paper <- function(dir         = "5_docs",
       )
       parts  <- system.file("templates", "paper", "quarto", paste0(type, ".qmd"),
                             package = "create.project", mustWork = TRUE)
-      # CLAUDE: 2. subtitle is now passed on (it was dropped before)
+      # subtitle is now passed on (it was dropped before)
       values <- quarto_values(title, subtitle, author, thanks, if (is.null(date)) "today" else date,
                               bib_style, figures_dir, repo_url, package)
       # the LaTeX look (header.tex), the APA reference style (apa.csl) and
@@ -221,7 +218,6 @@ quarto_values <- function(title, subtitle, author, thanks, date, bib_style,
                           figures_dir, repo_url, package) {
   list(
     title         = yaml_quote(escape_markdown(title)),
-    # CLAUDE: 2. fills subtitle: '{{subtitle}}' in research.qmd (same escaping as the title)
     subtitle      = yaml_quote(escape_markdown(subtitle)),
     # raw LaTeX inline (`...`{=latex}), so that Markdown leaves the \thanks alone
     author        = yaml_quote(paste0(

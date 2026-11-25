@@ -43,23 +43,37 @@
 #' @export
 #' @examples
 #' \dontrun{
-#' create_project("~/OneDrive/university/26b/seminar/my_paper", title = "Why does X affect Y?")
-#' create_project("~/OneDrive/personal/project/coolfun", type = "package")
-#' create_project("~/OneDrive/university/26b/seminar/my_paper", format = "latex")
+#' create_project("~path", title = "Why does X affect Y?")
+#' create_project("~path", type = "package")
+#' create_project("~path", format = "latex")
 #' }
 create_project <- function(path,
                            type           = c("research", "package"),
                            title          = "[Insert Title]",
-                           author         = "Simon Labarthe",
-                           email          = "simon.labarthe@outlook.com",
-                           github_user    = "SimonLabarthe",
+                           author         = "[Your Name]",
+                           email          = "gmail@chucknorris.com",
+                           github_user    = "You",
                            publish_github = FALSE,
-                           # CLAUDE: 1. match.arg() below takes the FIRST value as the
-                           # default, so putting "quarto" first makes it the default
-                           format         = c("quarto", "latex")) {
+                           format         = c("quarto", "latex"),
+                           ask            = interactive()) {
+
+  # missing(x) is TRUE when you did not give x in the call: only those are asked, what you typed is never asked again
+  if (ask && missing(path)) {
+    path <- ask_text("project folder (e.g. C:/Users/you/:")
+  }
+  # HERE: utils::menu() prints a numbered list and returns the number you type
+  if (ask && missing(type)) {
+    type <- ask_choice("type of project?", c("research", "package"))
+  }
+  if (ask && missing(format)) {
+    format <- if (ask_yes_no("Quarto paper (APA references + automatic word count)? no = LaTeX")) "quarto" else "latex"
+  }
+  if (ask && missing(publish_github)) {
+    publish_github <- ask_yes_no("create a private GitHub repo and push?", default = FALSE)
+  }
+
   type   <- match.arg(type)     # checks the value is one of the allowed ones
   format <- match.arg(format)
-  # CLAUDE: 3. was: stop("RENV_PATHS_LIBRARY_ROOT is not set ..."). now fixed for you
   if (type == "research") set_renv_library_root()
 
   name     <- basename(fs::path_abs(path))
@@ -197,7 +211,29 @@ write_readme <- function(type, name, repo_url, format) {
   write_if_missing("README.md", c(paste("#", name), "", "[One line: what this is.]", "", body))
 }
 
-# CLAUDE: 3. the old "once per computer" README step, done by code.
+# asks a yes/no question in the console. readline() waits for you to type and press Enter; Enter alone = the default (the capital letter in [Y/n])
+ask_yes_no <- function(question, default = TRUE) {
+  hint   <- if (default) "[Y/n]" else "[y/N]"
+  answer <- tolower(trimws(readline(paste(question, hint, ""))))
+  if (answer == "") return(default)
+  answer %in% c("y", "yes", "o", "oui")
+}
+
+# asks to pick one option from a numbered list. menu() returns 0 if you type 0 (= cancel)
+ask_choice <- function(question, choices) {
+  pick <- utils::menu(choices, title = question)
+  if (pick == 0) stop("cancelled", call. = FALSE)
+  choices[pick]
+}
+
+# asks for free text (the folder). gsub() removes quotes you may have pasted around the path, and chartr() turns Windows \ into /
+ask_text <- function(question) {
+  answer <- trimws(gsub("^[\"']|[\"']$", "", trimws(readline(paste(question, "")))))
+  if (answer == "") stop("no folder given", call. = FALSE)
+  chartr("\\", "/", answer)
+}
+
+# the old "once per computer" README step, done by code.
 # renv keeps each project's packages in a library folder. by default that folder
 # is inside the project, i.e. in OneDrive: thousands of small files to sync.
 # the environment variable RENV_PATHS_LIBRARY_ROOT moves it to a local folder.

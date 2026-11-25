@@ -4,15 +4,29 @@ a whole research project (folders, renv, git, a paper with APA references and an
 
 ## 1. start a project: one line
 
-open RStudio, paste this in the **console** (bottom-left), change the path, press Enter:
+open RStudio, paste this in the **console** (bottom-left), press Enter, answer the questions:
 
 ``` r
-install.packages("remotes"); remotes::install_github("SimonLabarthe/create.project"); create.project::create_project("C:/Users/<you>/OneDrive/university/26b/seminar/my_paper")
+install.packages("remotes"); remotes::install_github("SimonLabarthe/create.project"); create.project::create_project()
 ```
 
-that's it: no file to save, no `library()`. then open `my_paper/my_paper.Rproj`.
+```
+project folder (e.g. C:/Users/you/OneDrive/university/26b/seminar/my_paper): C:/Users/<you>/OneDrive/university/26b/seminar/my_paper
+type of project?
 
-- the last folder of the path (`my_paper`) becomes the project name; the folder is created if needed.
+1: research
+2: package
+
+Selection: 1
+Quarto paper (APA references + automatic word count)? no = LaTeX [Y/n]
+create a private GitHub repo and push? [y/N]
+done: open my_paper.Rproj
+```
+
+that's it: no file to save, no `library()`. Enter alone takes the default (the capital letter: Quarto yes, GitHub no). then open `my_paper/my_paper.Rproj`.
+
+- the last folder of the path (`my_paper`) becomes the project name; the folder is created if needed. pasting it with quotes or with Windows `\` is fine.
+- what you write in the call is not asked: `create_project("C:/.../my_paper", type = "research")` only asks Quarto and GitHub. in a script (not the console) nothing is asked and the defaults are used.
 - run the same line again for every new project: `install_github()` skips the download when nothing changed on GitHub, and picks up the latest version when something did.
 - first time on a computer: it also tells renv to keep package libraries out of OneDrive (it adds `RENV_PATHS_LIBRARY_ROOT` to your `~/.Renviron`). nothing to do by hand.
 
